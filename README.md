@@ -27,7 +27,7 @@ cp .env.example .env.local     # git-ignored; put your key in GEMINI_API_KEY
 npm run dev                    # restart after editing .env.local
 ```
 
-Everything except map tiles and the optional AI works offline. If the Wi-Fi fails, use **Matches → Offline view**. Without a Gemini key the AI boxes say "AI assistant is off" and everything else works.
+Everything except map tiles and the optional AI works offline. The 3D map uses free OpenFreeMap vector tiles (no API key) and WebGL. If it can't load within 15 s, it switches to the **Offline view** automatically, and you can also pick that view yourself. Without a Gemini key the AI boxes say "AI assistant is off" and everything else works.
 
 ## Pages
 
@@ -35,7 +35,7 @@ Everything except map tiles and the optional AI works offline. If the Wi-Fi fail
 |---|---|
 | **Overview** | Headline numbers, top matches, the "Why liquid cooling matters" comparison, and a one-line impact summary. |
 | **Set up** | Cooling technology (air / rear-door / warm-water liquid), the demand model (month-by-month or yearly average), scenario presets, all settings with **?** explanations, a live heat-flow panel, and the AI what-if box with a before/after preview. |
-| **Matches** | Map plus building list. The selected building gets a verdict, up to 3 reasons, key facts, heat use by month, and a folded money breakdown and technical details. Also "Ask about this building" (AI). |
+| **Matches** | 3D map (tilt/rotate; real OpenStreetMap 3D buildings for context; each candidate is a column whose height = yearly heat demand, colored by verdict; red block = data center) with 2D and offline views, plus building list. The selected building gets a verdict, up to 3 reasons, key facts, heat use by month, and a folded money breakdown and technical details. Also "Ask about this building" (AI). |
 | **Compare** | Ranked table and yearly-savings chart (individual estimates). |
 | **Share heat** | One heat supply shared out best match first, with no double-counting. Includes a month-by-month chart showing winter shortfall and summer surplus. |
 | **Scenarios** | Save, load, rename, duplicate and delete scenarios, and compare up to 3 with current settings side by side. |

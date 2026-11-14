@@ -20,7 +20,7 @@ const STATUS_ROWS: { title: string; tone: 'built' | 'real' | 'modeled' | 'concep
     items: [
       'Calculation engine for heat supply, heat-pump power, costs, payback and CO₂ (TypeScript, 24 automated tests)',
       'Ranking of 8 buildings with plain-language reasons and transparent pass/fail rules',
-      'Interactive map, plus an offline view',
+      '3D/2D interactive map (MapLibre + OpenStreetMap 3D buildings; column height = heat demand), plus an offline view',
       'Month-by-month supply vs. demand, and sharing one heat supply without double-counting',
       'Cooling-technology comparison (air, rear-door, warm-water liquid)',
       'Save, load and compare scenarios side by side',
