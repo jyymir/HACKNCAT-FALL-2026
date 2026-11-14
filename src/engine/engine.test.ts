@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { computeSupply, estimateCop, haversineM } from './thermal';
 import { computeEconomics } from './economics';
 import { allocatePortfolio, evaluateCandidates } from './matching';
+import { COOLING_OPTIONS, detectCooling, withCooling } from '../data/cooling';
 import { DEFAULT_ASSUMPTIONS as A, DEMO_CUSTOMERS, DEMO_DATA_CENTER, SCENARIOS } from '../data/demoCustomers';
 
 const run = (a = A) => {
@@ -84,5 +85,21 @@ describe('matching', () => {
     const base = run().ranked.filter((r) => r.status === 'Promising').length;
     const bad = run(SCENARIOS.find((s) => s.id === 'unfavorable')!.assumptions).ranked.filter((r) => r.status === 'Promising').length;
     expect(bad).toBeLessThan(base);
+  });
+});
+
+describe('cooling options', () => {
+  it('liquid cooling yields more usable heat and less heat-pump electricity per MWh than air', () => {
+    const air = computeSupply(withCooling(A, COOLING_OPTIONS[0]));
+    const liquid = computeSupply(withCooling(A, COOLING_OPTIONS[2]));
+    expect(liquid.recoverableHeatMw).toBeGreaterThan(air.recoverableHeatMw);
+    const hpAir = computeEconomics(withCooling(A, COOLING_OPTIONS[0]), 1000, 70, 0).heatPumpElectricityMwh;
+    const hpLiquid = computeEconomics(withCooling(A, COOLING_OPTIONS[2]), 1000, 70, 0).heatPumpElectricityMwh;
+    expect(hpLiquid).toBeLessThan(hpAir);
+  });
+
+  it('detects the active cooling option and returns undefined for custom values', () => {
+    expect(detectCooling(withCooling(A, COOLING_OPTIONS[1]))?.id).toBe('rear-door');
+    expect(detectCooling({ ...A, heatCaptureFraction: 0.83 })).toBeUndefined();
   });
 });

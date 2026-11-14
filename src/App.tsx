@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, Download, FileText, Flame, LayoutGrid, MapPin, PieChart, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { Assumptions } from './engine/types';
-import { computeSupply } from './engine/thermal';
-import { allocatePortfolio, evaluateCandidates } from './engine/matching';
+import { runModel } from './engine/run';
 import { DEFAULT_ASSUMPTIONS, DEMO_CUSTOMERS, DEMO_DATA_CENTER, SCENARIOS } from './data/demoCustomers';
 import { Report, downloadCsv } from './components/Report';
 import { HomePage } from './pages/HomePage';
@@ -47,11 +46,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Every input change recomputes the full pipeline: supply → candidates → ranking → portfolio.
-  const { supply, ranked, portfolio } = useMemo(() => {
-    const supply = computeSupply(assumptions);
-    const ranked = evaluateCandidates(assumptions, DEMO_DATA_CENTER, DEMO_CUSTOMERS, supply);
-    return { supply, ranked, portfolio: allocatePortfolio(assumptions, ranked, supply) };
-  }, [assumptions]);
+  const { supply, ranked, portfolio } = useMemo(() => runModel(assumptions, DEMO_DATA_CENTER, DEMO_CUSTOMERS), [assumptions]);
 
   const selected = ranked.find((r) => r.customer.id === selectedId) ?? ranked[0];
   const allocation = portfolio.allocations.find((x) => x.customerId === selected.customer.id);
@@ -117,7 +112,7 @@ export default function App() {
           </header>
 
           <main className="content">
-            {page === '' && <HomePage supply={supply} ranked={ranked} portfolio={portfolio} onOpen={openMatch} />}
+            {page === '' && <HomePage assumptions={assumptions} supply={supply} ranked={ranked} portfolio={portfolio} onOpen={openMatch} />}
             {page === 'setup' && (
               <SetupPage
                 assumptions={assumptions}

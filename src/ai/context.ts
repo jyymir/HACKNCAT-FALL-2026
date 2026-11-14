@@ -1,5 +1,6 @@
 import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
 import { STATUS_LABEL } from '../format';
+import { detectCooling } from '../data/cooling';
 
 const r0 = (n: number) => Math.round(n);
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -30,6 +31,7 @@ export function buildMatchContext(
   return {
     note: 'All buildings and values are fictional illustrative demo data. Figures are modeled estimates from a simplified screening model.',
     settings: {
+      coolingTechnology: detectCooling(a)?.label ?? 'custom values',
       itLoadMw: a.itLoadMw,
       heatCapturePct: r0(a.heatCaptureFraction * 100),
       sourceWaterTempC: a.sourceTempC,

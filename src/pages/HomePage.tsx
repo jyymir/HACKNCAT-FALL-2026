@@ -1,5 +1,6 @@
 import { ArrowRight, Sparkles } from 'lucide-react';
-import type { CandidateResult, Portfolio, SupplySummary } from '../engine/types';
+import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
+import { CoolingCompare } from '../components/CoolingCompare';
 import { MWH_PER_HOME, STATUS_CLASS, fmtMoney, fmtNum, fmtPayback } from '../format';
 import { CategoryTile, StatusBadge } from '../components/ui';
 
@@ -7,8 +8,10 @@ export function HomePage({
   supply,
   ranked,
   portfolio,
+  assumptions,
   onOpen,
 }: {
+  assumptions: Assumptions;
   supply: SupplySummary;
   ranked: CandidateResult[];
   portfolio: Portfolio;
@@ -91,6 +94,8 @@ export function HomePage({
           ))}
         </div>
       </section>
+
+      <CoolingCompare assumptions={assumptions} />
 
       <section className="split">
         <div className="card idea">

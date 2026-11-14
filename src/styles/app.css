@@ -313,13 +313,40 @@ table { border-collapse: collapse; width: 100%; }
 .report.preview p { margin: 4px 0; }
 .report.preview th, .report.preview td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
 
+/* ---------- Cooling technology ---------- */
+.cool-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cool-option { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--line); background: #fafafb; }
+.cool-option:hover { border-color: #bdbdc2; }
+.cool-option.active { background: #fff; border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.cool-option-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cool-desc { font-size: 13px; color: #4a4a50; }
+.cool-vals { font-size: 13.5px; font-weight: 650; }
+.cool-basis { font-size: 11.5px; color: var(--muted); }
+
+.cool-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.cool-col { border-radius: 18px; padding: 16px; background: #f6f6f7; }
+.cool-col.featured { background: var(--ink); color: #fff; }
+.cool-col.featured dt, .cool-col.featured .cool-big small { color: rgba(255, 255, 255, 0.65); }
+.cool-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
+.you-tag { font-size: 11px; font-weight: 650; padding: 2px 8px; border-radius: 99px; background: var(--red); color: #fff; }
+.cool-big { font-size: 30px; font-weight: 750; letter-spacing: -0.02em; margin-top: 10px; }
+.cool-big small { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.cool-bar { height: 8px; border-radius: 99px; background: rgba(127, 127, 135, 0.2); overflow: hidden; margin: 8px 0 12px; }
+.cool-bar span { display: block; height: 100%; border-radius: 99px; background: var(--red); transition: width 0.3s; }
+.cool-stats { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.cool-stats > div { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.cool-stats dt { color: var(--muted); }
+.cool-stats dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+.cool-col.featured .warn { color: #ffc960; }
+.cooling-card .fineprint a { color: var(--red); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .setup-grid, .matches-grid { grid-template-columns: 1fr; }
   .side-stack { position: static; }
 }
 @media (max-width: 860px) {
-  .kpis, .match-cards, .split, .glossary { grid-template-columns: 1fr; }
+  .kpis, .match-cards, .split, .glossary, .cool-pick, .cool-cols { grid-template-columns: 1fr; }
   .field-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {

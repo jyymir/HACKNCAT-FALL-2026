@@ -1,5 +1,6 @@
 import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
 import { COP_MAX, COP_MIN, COP_SLOPE_PER_C } from '../engine/thermal';
+import { detectCooling } from '../data/cooling';
 import { DISCLAIMER, fmtDistance, fmtMoney, fmtNum, fmtPayback } from '../format';
 
 export const LIMITATIONS = [
@@ -13,6 +14,7 @@ export const LIMITATIONS = [
 
 export function assumptionRows(a: Assumptions): [string, string][] {
   return [
+    ['Cooling technology', detectCooling(a)?.label ?? 'Custom values'],
     ['IT load', `${a.itLoadMw} MW`],
     ['Heat capture fraction', `${fmtNum(a.heatCaptureFraction * 100)}%`],
     ['Source heat temperature', `${a.sourceTempC} °C`],

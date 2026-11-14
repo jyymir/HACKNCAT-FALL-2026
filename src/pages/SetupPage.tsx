@@ -5,6 +5,42 @@ import { GROUPS, type FieldDef } from '../data/fields';
 import { MWH_PER_HOME, fmtNum } from '../format';
 import { Info, NextStep, PageHeader } from '../components/ui';
 import { WhatIfBox } from '../components/AiPanels';
+import { COOLING_OPTIONS, detectCooling, withCooling } from '../data/cooling';
+
+function CoolingPicker({ a, onChange }: { a: Assumptions; onChange: (a: Assumptions) => void }) {
+  const current = detectCooling(a)?.id;
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <div className="card-title">How is the data center cooled?</div>
+          <div className="card-sub">Sets how much heat is caught and how warm the water is.</div>
+        </div>
+        {!current && (
+          <span className="fineprint inline">
+            Now: {Math.round(a.heatCaptureFraction * 100)}% captured · {a.sourceTempC} °C (not one of these presets)
+          </span>
+        )}
+      </div>
+      <div className="cool-pick">
+        {COOLING_OPTIONS.map((c) => (
+          <button key={c.id} className={`cool-option ${current === c.id ? 'active' : ''}`} onClick={() => onChange(withCooling(a, c))}>
+            <span className="cool-option-top">
+              <strong>{c.label}</strong>
+              {c.id === 'liquid' && <span className="chip-soft">Lenovo Neptune-style</span>}
+            </span>
+            <span className="cool-desc">{c.description}</span>
+            <span className="cool-vals">
+              {Math.round(c.heatCaptureFraction * 100)}% captured · {c.sourceTempC} °C water
+            </span>
+            <span className="cool-basis">{c.source ? 'Water temp from Lenovo datasheet · capture illustrative' : 'Illustrative values'}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 
 const round = (v: number) => Math.round(v * 1e6) / 1e6;
 
@@ -141,6 +177,8 @@ export function SetupPage({
           </button>
         ))}
       </div>
+
+      <CoolingPicker a={assumptions} onChange={onChange} />
 
       <div className="setup-grid">
         <div className="card">

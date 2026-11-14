@@ -15,7 +15,7 @@ const GLOSSARY: [string, string][] = [
 ];
 
 const REFERENCES = [
-  { label: 'Lenovo Neptune liquid cooling (public materials)', url: 'https://www.lenovo.com/us/en/servers-storage/neptune/', why: 'Warm-water liquid-cooling context' },
+  { label: 'Lenovo Press DS0187: ThinkSystem N1380 Neptune datasheet', url: 'https://lenovopress.lenovo.com/ds0187', why: 'Source of the 45 °C warm-water inlet figure used for liquid cooling' },
   { label: 'U.S. EIA: Commercial Buildings Energy Consumption Survey (CBECS)', url: 'https://www.eia.gov/consumption/commercial/', why: 'Could inform future building demand estimates' },
   { label: 'U.S. EPA: eGRID', url: 'https://www.epa.gov/egrid', why: 'Future grid-emissions factors' },
   { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/', why: 'Future building/location discovery' },
@@ -97,7 +97,7 @@ export function ReportPage(props: {
             </li>
           ))}
         </ul>
-        <p className="fineprint">Not used to create the demo data; listed as possible future sources of verified data.</p>
+        <p className="fineprint">Only the Lenovo datasheet is used, for the 45 °C liquid-cooling water temperature. The others were not used to create the demo data.</p>
       </details>
 
       <NextStep label="Back to overview" href="#" back={{ label: 'Share heat', href: '#share' }} />

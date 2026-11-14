@@ -34,6 +34,12 @@ npm run dev                    # restart after editing .env.local
 
 **How the key stays private:** `server/geminiProxy.ts` is a small middleware inside the Vite dev/preview server (not a separate backend). The browser only calls `/api/ai/*`, and the key is never bundled because it has no `VITE_` prefix. As a result, AI features need `npm run dev` or `npm run preview`. A purely static deployment just shows "AI assistant is turned off". The model defaults to `gemini-3.6-flash`, with `gemini-2.5-flash` as an automatic fallback if it is busy (retry once, then fall back). Override with `GEMINI_MODEL` and `GEMINI_FALLBACK_MODELS`. Answers are cached in memory, so repeating a demo question doesn't hit the network again.
 
+### Cooling technology and why Lenovo fits
+
+Set up has a **"How is the data center cooled?"** picker: Air, Rear-door heat exchanger, or Warm-water liquid cooling (Lenovo Neptune-style). Each sets the heat-capture share and the water temperature. Overview has a **"Why liquid cooling matters"** card that reruns the model under all three options with your current settings.
+
+Sourcing: the 45 °C liquid-cooling water temperature is Lenovo's published inlet maximum ([Lenovo Press DS0187, ThinkSystem N1380 Neptune](https://lenovopress.lenovo.com/ds0187)). Outlet water is warmer, so 45 °C is conservative. All capture shares and the air/rear-door temperatures are illustrative. This is presented as strategic fit, not a Lenovo endorsement.
+
 ## What it does: a guided, five-step site
 
 The pages use hash routing (`#setup`, `#matches`, …) and share one live model, so changing a setting updates every page.
