@@ -12,8 +12,8 @@ import type { Connect, Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const MAX_BODY = 64 * 1024;
-const TIMEOUT_MS = 15_000; // per attempt
-const OVERALL_BUDGET_MS = 40_000; // across all retries and fallback models
+const TIMEOUT_MS = 12_000; // per attempt
+const OVERALL_BUDGET_MS = 45_000; // across all retries and fallback models
 
 const ASK_SYSTEM = `You are the plain-language explainer inside "Lenovo HeatMatch", a prototype tool that screens whether nearby buildings could reuse waste heat from an AI data center.
 Rules:
@@ -107,16 +107,29 @@ async function callOnce(apiKey: string, model: string, system: string, userText:
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Google returns these (with 400/403/404) when a model ID is retired, renamed or not enabled for the key. */
+const UNAVAILABLE_MSG = /no longer available|not found|not supported|is not available|deprecated|retired|update your code to use/i;
+
+function isModelUnavailable(err: unknown): boolean {
+  if (!(err instanceof GeminiHttpError)) return false;
+  return err.status === 404 || ([400, 403].includes(err.status) && UNAVAILABLE_MSG.test(err.message));
+}
+
 /**
- * Try each model in order. On a busy/transient error, retry once after a short pause, then
- * fall back to the next model. Bad requests and invalid keys fail immediately; a model
- * that doesn't exist (404) just moves on to the next one.
+ * Try each model in order.
+ *  - Busy/transient error (429/5xx/timeout): retry the primary model once, then move on.
+ *  - Model retired / not available to this key: skip straight to the next model.
+ *  - Anything else (bad key, bad request): stop and report it.
  */
 async function callGemini(apiKey: string, models: string[], system: string, userText: string, generationConfig: Json = {}) {
   const deadline = Date.now() + OVERALL_BUDGET_MS;
   let lastErr: unknown;
-  for (const model of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+  let sawBusy = false;
+  const unavailable: string[] = [];
+
+  for (const [index, model] of models.entries()) {
+    const attempts = index === 0 ? 2 : 1;
+    for (let attempt = 0; attempt < attempts; attempt++) {
       if (Date.now() > deadline) break;
       try {
         const text = await callOnce(apiKey, model, system, userText, generationConfig);
@@ -124,16 +137,22 @@ async function callGemini(apiKey: string, models: string[], system: string, user
       } catch (err) {
         lastErr = err;
         const status = err instanceof GeminiHttpError ? err.status : 0;
-        if (status === 404) break; // model not available → next model
+        if (isModelUnavailable(err)) {
+          console.warn(`[gemini] ${model} unavailable (${status}): ${(err as Error).message}`);
+          unavailable.push(model);
+          break; // next model
+        }
         if (!RETRYABLE.has(status)) throw err; // bad key, bad request, etc.
+        sawBusy = true;
         console.warn(`[gemini] ${model} attempt ${attempt + 1} failed (${status}): ${(err as Error).message}`);
-        if (attempt === 0) await wait(800 + Math.random() * 400);
+        if (attempt + 1 < attempts) await wait(800 + Math.random() * 400);
       }
     }
   }
-  const status = lastErr instanceof GeminiHttpError ? lastErr.status : 0;
-  if (RETRYABLE.has(status)) {
-    throw new Error('Gemini is very busy right now. Please try again in a minute. Everything else in HeatMatch still works.');
+
+  if (sawBusy) throw new Error('Gemini is very busy right now. Please try again in a minute. Everything else in HeatMatch still works.');
+  if (unavailable.length === models.length) {
+    throw new Error(`None of the configured Gemini models are available to this API key (${unavailable.join(', ')}). Set GEMINI_MODEL in .env.local to a current model.`);
   }
   throw lastErr instanceof Error ? lastErr : new Error('Gemini request failed');
 }
@@ -142,7 +161,7 @@ export function geminiProxy(env: Record<string, string>): Plugin {
   const apiKey = env.GEMINI_API_KEY ?? '';
   const primary = env.GEMINI_MODEL || 'gemini-3.6-flash';
   // Fallbacks used when the primary model is overloaded. Override with a comma-separated list.
-  const fallbacks = (env.GEMINI_FALLBACK_MODELS || 'gemini-2.5-flash')
+  const fallbacks = (env.GEMINI_FALLBACK_MODELS || 'gemini-3.8-flash,gemini-3.5-flash-lite,gemini-flash-latest')
     .split(',')
     .map((m) => m.trim())
     .filter(Boolean);

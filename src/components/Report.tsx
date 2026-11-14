@@ -1,10 +1,11 @@
 import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
 import { COP_MAX, COP_MIN, COP_SLOPE_PER_C } from '../engine/thermal';
 import { detectCooling } from '../data/cooling';
+import { CLIMATE_SOURCE, MONTHS } from '../data/climate';
 import { DISCLAIMER, fmtDistance, fmtMoney, fmtNum, fmtPayback } from '../format';
 
 export const LIMITATIONS = [
-  'Annual energy balance only — no hourly or seasonal matching of supply and demand.',
+  'Supply and demand are balanced monthly at best (one year of weather, 2024) — no hourly matching or heat storage. Year-round demand shares per building type are illustrative.',
   'Distances are straight-line (Haversine) × a route multiplier, not engineered pipe routes.',
   `Heat-pump COP uses a demo heuristic: clamp(${COP_MAX} − ${COP_SLOPE_PER_C} × lift, ${COP_MIN}, ${COP_MAX}). Not a certified equipment curve.`,
   'Taxes, financing, discounting, grants, heat-sales contracts, backup systems, pumping energy and detailed equipment costs are not modeled.',
@@ -79,6 +80,40 @@ export function Report({
         leaving {fmtNum(portfolio.remainingUnusedMwh)} unused and {fmtNum(portfolio.totalUnmetDemandMwh)} of eligible demand unmet. Portfolio net savings{' '}
         {fmtMoney(portfolio.totalNetAnnualSavings)}/yr on {fmtMoney(portfolio.totalCapex)} capex ({fmtPayback(portfolio.portfolioPaybackYears)}).
       </p>
+
+      {portfolio.periods.length === 12 && (
+        <>
+          <h2>2b. Month-by-month balance (weather-based demand)</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                {MONTHS.map((m) => (
+                  <th key={m}>{m}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(
+                [
+                  ['Supply MWh', 'supplyMwh'],
+                  ['Demand MWh', 'demandMwh'],
+                  ['Delivered MWh', 'deliveredMwh'],
+                  ['Backup MWh', 'unmetMwh'],
+                ] as const
+              ).map(([label, key]) => (
+                <tr key={key}>
+                  <td>{label}</td>
+                  {portfolio.periods.map((p, i) => (
+                    <td key={i}>{fmtNum(p[key])}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="note">Weather: {CLIMATE_SOURCE.label}. {CLIMATE_SOURCE.basis}.</p>
+        </>
+      )}
 
       <h2>3. Candidate rankings (individual opportunity estimates)</h2>
       <table>

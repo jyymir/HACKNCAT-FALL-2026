@@ -2,6 +2,25 @@ import type { Allocation, Assumptions, CandidateResult, DataCenter, Portfolio, S
 import { CustomerMap } from '../components/CustomerMap';
 import { AskBox } from '../components/AiPanels';
 import { buildMatchContext } from '../ai/context';
+import type { ModelOptions } from '../engine/run';
+import { MONTHS } from '../data/climate';
+
+/** 12 tiny bars: the building's monthly heat use, with the part this supply could cover filled in. */
+function MonthlyMini({ r }: { r: CandidateResult }) {
+  const max = Math.max(...r.demandByPeriod, 1);
+  return (
+    <div className="mini-months" aria-label="Heat use by month">
+      {r.demandByPeriod.map((d, i) => (
+        <div key={i} className="mm-col" title={`${MONTHS[i]}: needs ${fmtNum(d)} MWh, covered ${fmtNum(r.deliveredByPeriod[i])} MWh`}>
+          <div className="mm-bar" style={{ height: `${(d / max) * 100}%` }}>
+            <span style={{ height: `${d > 0 ? (r.deliveredByPeriod[i] / d) * 100 : 0}%` }} />
+          </div>
+          <span className="mm-label">{MONTHS[i][0]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 import { CategoryTile, Info, NextStep, PageHeader, StatusBadge } from '../components/ui';
 import { STATUS_CLASS, fmtDistance, fmtMoney, fmtNum, fmtPayback } from '../format';
 
@@ -71,6 +90,16 @@ function Detail({ r, allocation, a }: { r: CandidateResult; allocation?: Allocat
         </div>
       </div>
 
+      {r.demandByPeriod.length === 12 && (
+        <div className="fold-static">
+          <div className="kv-title-row">
+            <span>Heat use by month</span>
+            <span className="fineprint inline">Winter peak, summer dip (weather-based)</span>
+          </div>
+          <MonthlyMini r={r} />
+        </div>
+      )}
+
       <details className="fold">
         <summary>Money breakdown</summary>
         <Row k="+ Heating bill avoided" v={fmtMoney(e.avoidedHeatingCost)} />
@@ -103,10 +132,12 @@ export function MatchesPage({
   selected,
   allocation,
   assumptions,
+  options,
   supply,
   portfolio,
   onSelect,
 }: {
+  options: ModelOptions;
   dc: DataCenter;
   ranked: CandidateResult[];
   selected: CandidateResult;
@@ -148,7 +179,7 @@ export function MatchesPage({
             key={selected.customer.id}
             selected={selected}
             ranked={ranked}
-            buildContext={() => buildMatchContext(selected, ranked, assumptions, supply, portfolio)}
+            buildContext={() => buildMatchContext(selected, ranked, assumptions, supply, portfolio, options)}
           />
         </div>
       </div>

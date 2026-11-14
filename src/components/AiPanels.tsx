@@ -2,6 +2,54 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Assumptions, CandidateResult } from '../engine/types';
 import { askAi, getAiStatus, whatIfAi, type AiStatus } from '../ai/client';
 import { describeFields, validateChanges, type AppliedChange } from '../ai/whatif';
+import { runModel, summarize, type ModelOptions, type RunSummary } from '../engine/run';
+import { DEMO_CUSTOMERS, DEMO_DATA_CENTER } from '../data/demoCustomers';
+import { fmtMoney, fmtNum, fmtPayback } from '../format';
+
+/** Before/after results for a proposed what-if, computed by the deterministic engine (not the AI). */
+const ROWS: { label: string; get: (s: RunSummary) => number | null; fmt: (v: number | null) => string; better: 'high' | 'low' }[] = [
+  { label: 'Good matches', get: (s) => s.good, fmt: (v) => String(v ?? 0), better: 'high' },
+  { label: 'Savings / yr', get: (s) => s.savings, fmt: (v) => fmtMoney(v ?? 0), better: 'high' },
+  { label: 'Payback', get: (s) => s.payback, fmt: (v) => fmtPayback(v), better: 'low' },
+  { label: 'Heat used', get: (s) => s.heatUsedMwh, fmt: (v) => `${fmtNum(v ?? 0)} MWh`, better: 'high' },
+  { label: 'Backup heating', get: (s) => s.unmetMwh, fmt: (v) => `${fmtNum(v ?? 0)} MWh`, better: 'low' },
+];
+
+export function Preview({ before, after, options }: { before: Assumptions; after: Assumptions; options: ModelOptions }) {
+  const b = summarize(runModel(before, DEMO_DATA_CENTER, DEMO_CUSTOMERS, options));
+  const a = summarize(runModel(after, DEMO_DATA_CENTER, DEMO_CUSTOMERS, options));
+  return (
+    <table className="ba-table" aria-label="Results before and after the proposed change">
+      <thead>
+        <tr>
+          <th />
+          <th>Now</th>
+          <th>If applied</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ROWS.map((r) => {
+          const vb = r.get(b);
+          const va = r.get(a);
+          // Payback "never" (null) counts as worst.
+          const nb = vb ?? (r.better === 'low' ? Infinity : -Infinity);
+          const na = va ?? (r.better === 'low' ? Infinity : -Infinity);
+          const tone = Math.abs(na - nb) < 1e-6 || (!Number.isFinite(na) && !Number.isFinite(nb)) ? '' : (r.better === 'high' ? na > nb : na < nb) ? 'up' : 'down';
+          return (
+            <tr key={r.label}>
+              <td>{r.label}</td>
+              <td>{r.fmt(vb)}</td>
+              <td className={tone}>
+                {r.fmt(va)}
+                {tone && <span className="ba-arrow">{tone === 'up' ? ' ▲' : ' ▼'}</span>}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
 
 function useAiStatus(): AiStatus | null {
   const [s, setS] = useState<AiStatus | null>(null);
@@ -48,12 +96,23 @@ const WHATIF_EXAMPLES = [
 ];
 
 /** Natural-language what-if → validated setting changes → user confirms → engine recalculates. */
-export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; onApply: (a: Assumptions) => void }) {
+export function WhatIfBox({
+  assumptions,
+  options,
+  onApply,
+  onSaveScenario,
+}: {
+  assumptions: Assumptions;
+  options: ModelOptions;
+  onApply: (a: Assumptions) => void;
+  onSaveScenario: (name: string, a: Assumptions) => void;
+}) {
   const status = useAiStatus();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [proposal, setProposal] = useState<{ next: Assumptions; applied: AppliedChange[]; rejected: string[]; explanation: string; model?: string } | null>(null);
+  const [proposal, setProposal] = useState<{ next: Assumptions; applied: AppliedChange[]; rejected: string[]; explanation: string; model?: string; request: string } | null>(null);
+  const [savedNote, setSavedNote] = useState<string | null>(null);
   const [undo, setUndo] = useState<Assumptions | null>(null);
 
   if (status === null) return null;
@@ -67,9 +126,10 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
     setError(null);
     setProposal(null);
     setUndo(null);
+    setSavedNote(null);
     try {
       const r = await whatIfAi(q, describeFields(assumptions));
-      setProposal({ ...validateChanges(r.changes, assumptions), explanation: r.explanation, model: r.model });
+      setProposal({ ...validateChanges(r.changes, assumptions), explanation: r.explanation, model: r.model, request: q });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -111,6 +171,7 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
                   </li>
                 ))}
               </ul>
+              <Preview before={assumptions} after={proposal.next} options={options} />
               <div className="ai-actions">
                 <button
                   className="pill dark"
@@ -122,6 +183,17 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
                 >
                   Apply these changes
                 </button>
+                <button
+                  className="pill ghost"
+                  onClick={() => {
+                    const name = proposal.request.replace(/^what if\s*/i, '').replace(/\?$/, '').slice(0, 50);
+                    onSaveScenario(name ? name[0].toUpperCase() + name.slice(1) : 'AI what-if', proposal.next);
+                    setSavedNote(name || 'AI what-if');
+                    setProposal(null);
+                  }}
+                >
+                  Save as scenario
+                </button>
                 <button className="pill ghost" onClick={() => setProposal(null)}>
                   Discard
                 </button>
@@ -131,6 +203,12 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
             <p className="muted">No settings were changed.</p>
           )}
           {proposal.rejected.length > 0 && <p className="muted">Ignored: {proposal.rejected.join('; ')}</p>}
+        </div>
+      )}
+
+      {savedNote && (
+        <div className="ai-applied">
+          ✓ Saved “{savedNote}” without changing your settings. <a href="#scenarios">Compare it</a>
         </div>
       )}
 

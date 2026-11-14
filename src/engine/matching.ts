@@ -89,10 +89,14 @@ function buildReasons(a: Assumptions, r: Omit<CandidateResult, 'reasons' | 'rank
   }
 
   // 4. How much heat it uses
-  if (c.annualDemandMwh > supply.networkAvailableHeatMwh) {
+  if (r.technicallyServable && e.deliveredHeatMwh < c.annualDemandMwh - 1e-6) {
+    const pct = Math.round((e.deliveredHeatMwh / c.annualDemandMwh) * 100);
     secondary.push({
       tone: 'neutral',
-      text: `It wants more heat than is available — only ${Math.round((supply.networkAvailableHeatMwh / c.annualDemandMwh) * 100)}% of its need can be covered.`,
+      text:
+        r.deliveredByPeriod.length > 1
+          ? `In the coldest months it needs more heat than is available — ${pct}% of its yearly need can be covered.`
+          : `It wants more heat than is available — only ${pct}% of its need can be covered.`,
     });
   } else if (c.annualDemandMwh >= 5000) {
     secondary.push({ tone: 'good', text: `It uses a lot of heat (${fmtInt(c.annualDemandMwh)} MWh a year), enough to make the investment worthwhile.` });
@@ -110,23 +114,40 @@ function buildReasons(a: Assumptions, r: Omit<CandidateResult, 'reasons' | 'rank
 
 const STATUS_ORDER: Record<Status, number> = { Promising: 0, Marginal: 1, 'Not viable': 2 };
 
+/**
+ * Time periods the model balances supply and demand over.
+ * Annual mode = one period (the original model). Seasonal mode = 12 months.
+ */
+export interface Periods {
+  supply: number[]; // network-available heat per period (MWh-th)
+  demand: (c: Customer) => number[]; // building demand per period (MWh-th), sums to annual demand
+}
+
+export const annualPeriods = (supply: SupplySummary): Periods => ({
+  supply: [supply.networkAvailableHeatMwh],
+  demand: (c) => [c.annualDemandMwh],
+});
+
 /** Evaluate every candidate individually against the same supply, then rank. */
 export function evaluateCandidates(
   a: Assumptions,
   dc: DataCenter,
   customers: Customer[],
   supply: SupplySummary,
+  periods: Periods = annualPeriods(supply),
 ): CandidateResult[] {
   const results = customers.map((customer) => {
     const straightLineM = haversineM(dc.lat, dc.lon, customer.lat, customer.lon);
     const routeLengthM = straightLineM * a.routeMultiplier;
     const technicallyServable = customer.requiredTempC <= a.maxDeliveryTempC;
     const heatAvailableToCustomerMwh = supply.networkAvailableHeatMwh;
-    // Demand cap: deliver no more than the customer uses and no more than is available.
-    const delivered = technicallyServable ? Math.min(customer.annualDemandMwh, heatAvailableToCustomerMwh) : 0;
+    // Demand cap, period by period: deliver no more than the building uses and no more than is available.
+    const demandByPeriod = periods.demand(customer);
+    const deliveredByPeriod = demandByPeriod.map((d, i) => (technicallyServable ? Math.min(d, periods.supply[i]) : 0));
+    const delivered = deliveredByPeriod.reduce((s, x) => s + x, 0);
     const individual = computeEconomics(a, delivered, customer.requiredTempC, routeLengthM);
     const status = classify(a, technicallyServable, individual.netAnnualSavings, individual.simplePaybackYears);
-    const base = { customer, straightLineM, routeLengthM, heatAvailableToCustomerMwh, technicallyServable, individual, status };
+    const base = { customer, straightLineM, routeLengthM, heatAvailableToCustomerMwh, technicallyServable, individual, status, demandByPeriod, deliveredByPeriod };
     return { ...base, reasons: buildReasons(a, base, supply), rank: 0 };
   });
 
@@ -143,46 +164,66 @@ export function evaluateCandidates(
 }
 
 /**
- * Deterministic greedy shared-supply allocation (not an optimizer).
- * Walk candidates in rank order (skipping "Not viable"), allocate
- * min(demand, remaining supply), and never allocate the same heat twice.
+ * Deterministic greedy shared-supply allocation (not an optimizer), period by period.
+ * Walk candidates in rank order (skipping "Not viable"); in each period allocate
+ * min(demand, remaining supply), so the same heat is never allocated twice.
  * A partial allocation that would no longer produce positive savings is skipped.
  */
-export function allocatePortfolio(a: Assumptions, ranked: CandidateResult[], supply: SupplySummary): Portfolio {
-  let remaining = supply.networkAvailableHeatMwh;
+export function allocatePortfolio(
+  a: Assumptions,
+  ranked: CandidateResult[],
+  supply: SupplySummary,
+  periods: Periods = annualPeriods(supply),
+): Portfolio {
+  const n = periods.supply.length;
+  const remaining = [...periods.supply];
   const allocations: Allocation[] = [];
-  let totalUnmet = 0;
+  const eligibleDemand = new Array(n).fill(0);
+  const delivered = new Array(n).fill(0);
 
   for (const r of ranked) {
+    const demand = r.demandByPeriod;
     if (r.status === 'Not viable') {
-      allocations.push({ customerId: r.customer.id, allocatedMwh: 0, unmetDemandMwh: 0, economics: null });
+      allocations.push({ customerId: r.customer.id, allocatedMwh: 0, unmetDemandMwh: 0, economics: null, allocatedByPeriod: new Array(n).fill(0) });
       continue;
     }
-    let amount = Math.min(r.customer.annualDemandMwh, remaining);
+    demand.forEach((d, i) => (eligibleDemand[i] += d));
+    let byPeriod = demand.map((d, i) => Math.min(d, remaining[i]));
+    let amount = byPeriod.reduce((s, x) => s + x, 0);
     let economics = amount > 0 ? computeEconomics(a, amount, r.customer.requiredTempC, r.routeLengthM) : null;
     if (economics && economics.netAnnualSavings <= 0) {
+      byPeriod = new Array(n).fill(0);
       amount = 0;
       economics = null;
     }
-    remaining -= amount;
-    const unmet = r.customer.annualDemandMwh - amount;
-    totalUnmet += unmet;
-    allocations.push({ customerId: r.customer.id, allocatedMwh: amount, unmetDemandMwh: unmet, economics });
+    byPeriod.forEach((x, i) => {
+      remaining[i] -= x;
+      delivered[i] += x;
+    });
+    allocations.push({ customerId: r.customer.id, allocatedMwh: amount, unmetDemandMwh: r.customer.annualDemandMwh - amount, economics, allocatedByPeriod: byPeriod });
   }
 
   const connected = allocations.filter((x) => x.economics);
   const totalAllocatedMwh = connected.reduce((s, x) => s + x.allocatedMwh, 0);
   const totalNetAnnualSavings = connected.reduce((s, x) => s + (x.economics?.netAnnualSavings ?? 0), 0);
   const totalCapex = connected.reduce((s, x) => s + (x.economics?.connectionCapex ?? 0), 0);
+  const totalUnmetDemandMwh = allocations.reduce((s, x) => s + x.unmetDemandMwh, 0);
 
   return {
     supplyMwh: supply.networkAvailableHeatMwh,
     allocations,
     totalAllocatedMwh,
-    remainingUnusedMwh: Math.max(0, remaining),
-    totalUnmetDemandMwh: totalUnmet,
+    remainingUnusedMwh: Math.max(0, remaining.reduce((s, x) => s + x, 0)),
+    totalUnmetDemandMwh,
     totalNetAnnualSavings,
     totalCapex,
     portfolioPaybackYears: totalNetAnnualSavings > 0 ? totalCapex / totalNetAnnualSavings : null,
+    periods: periods.supply.map((sup, i) => ({
+      supplyMwh: sup,
+      demandMwh: eligibleDemand[i],
+      deliveredMwh: delivered[i],
+      unusedMwh: Math.max(0, remaining[i]),
+      unmetMwh: Math.max(0, eligibleDemand[i] - delivered[i]),
+    })),
   };
 }

@@ -122,6 +122,9 @@ export interface CandidateResult {
   status: Status;
   reasons: Reason[];
   rank: number;
+  /** Demand and individually delivered heat per period (1 period = annual model, 12 = monthly). */
+  demandByPeriod: number[];
+  deliveredByPeriod: number[];
 }
 
 export interface Allocation {
@@ -129,6 +132,15 @@ export interface Allocation {
   allocatedMwh: number;
   unmetDemandMwh: number;
   economics: CandidateEconomics | null;
+  allocatedByPeriod: number[];
+}
+
+export interface PeriodBalance {
+  supplyMwh: number; // network-available heat this period
+  demandMwh: number; // demand of buildings eligible for allocation
+  deliveredMwh: number; // heat actually given to buildings
+  unusedMwh: number; // supply left over
+  unmetMwh: number; // eligible demand not covered (needs backup heating)
 }
 
 export interface Portfolio {
@@ -140,4 +152,6 @@ export interface Portfolio {
   totalNetAnnualSavings: number;
   totalCapex: number;
   portfolioPaybackYears: number | null;
+  /** Supply/demand balance per period (length 1 = annual model, 12 = monthly). */
+  periods: PeriodBalance[];
 }

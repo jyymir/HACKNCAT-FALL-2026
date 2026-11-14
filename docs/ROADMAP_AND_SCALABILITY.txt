@@ -1,0 +1,130 @@
+LENOVO HEATMATCH - ROADMAP AND SCALABILITY PLAN
+================================================
+Prototype status as of 2026-11-14. Concept prototype; not a Lenovo product or endorsement.
+Everything after "Phase 0" is a plan, not something that exists today.
+
+
+1. WHERE WE ARE TODAY (PHASE 0 - HACKATHON PROTOTYPE)
+-----------------------------------------------------
+Built and working:
+  - Calculation engine (TypeScript, 24 automated tests): recoverable heat, heat-pump
+    electricity, delivered heat, costs, payback, CO2, transparent pass/fail rules.
+  - Month-by-month supply vs. demand using real 2024 weather (Open-Meteo / ERA5,
+    Greensboro NC area), shared heat allocation with no double-counting.
+  - Cooling-technology comparison (air, rear-door, warm-water liquid / Neptune-style;
+    45 C inlet from Lenovo Press DS0187).
+  - Scenario save/compare, map, printable report, CSV.
+  - Gemini AI: plain-language what-ifs (engine computes the before/after) and Q&A
+    limited to the tool's own numbers.
+
+Still illustrative:
+  - 8 fictional buildings, cost and price assumptions, heat-pump efficiency heuristic,
+    heat-capture shares, emissions factors.
+
+Baseline demo result (10 MW site, monthly model):
+  6.3 MW usable heat -> 25,905 MWh/yr actually used (57%), ~$1.48M/yr net savings,
+  ~$11.8M setup, ~7.9-yr payback, ~2,920 t CO2/yr avoided (illustrative factors).
+  Liquid vs. air cooling: ~$1.72M vs ~$1.13M per year; winter backup heating
+  1,382 vs 8,432 MWh.
+
+
+2. PHASED ROADMAP
+-----------------
+
+PHASE 1 - REAL DATA FOR ONE PILOT SITE (0-3 months)
+  Goal: replace demo data with real inputs for one real data center and its neighbors.
+  - Building discovery: pull nearby buildings from OpenStreetMap / county GIS
+    (type, footprint, location) instead of hand-entered demo buildings.
+  - Demand estimates: building-type energy intensities (e.g. U.S. EIA CBECS) x floor
+    area, then calibrate with real utility bills where owners share them.
+  - Weather: multi-year climate normals instead of one year (2024).
+  - Data-center inputs: real IT load profile and cooling-loop temperatures from the
+    operator (or Lenovo Neptune system specs for liquid-cooled sites).
+  - Validation: compare screening results against one independent engineering study.
+  Success measure: screening ranks the same top candidates as the engineering study.
+
+PHASE 2 - ENGINEERING-GRADE SCREENING (3-9 months)
+  - Shared heat networks: one trunk pipe branching to several buildings, compared with
+    separate pipes (minimum-spanning-tree / Steiner-tree layout along streets).
+  - Hourly matching and thermal storage: size a hot-water tank to move summer surplus
+    into evenings and shoulder seasons.
+  - Validated heat-pump performance curves from manufacturer data (replace heuristic).
+  - Full project finance: NPV/IRR, financing, incentives (e.g. available tax credits and
+    utility programs), heat-sale contract pricing.
+  - Grid-emissions factors by region and hour (e.g. U.S. EPA eGRID).
+  - Backend + database so projects, scenarios and audit trails are shared by a team.
+  Success measure: results within an agreed tolerance of detailed feasibility studies.
+
+PHASE 3 - PORTFOLIO AND PLATFORM (9-24 months)
+  - Site selection: screen many candidate data-center sites at once and rank them by
+    heat-reuse potential before land is bought.
+  - Live mode: connect to data-center telemetry (actual heat output and loop temps) to
+    track delivered heat and savings after a project is built.
+  - Multi-region: climate, energy prices and regulations per country (EU heat-reuse
+    rules are already pushing operators to evaluate reuse).
+  - APIs for partners: utilities, district-heating operators, city planners.
+
+
+3. WHY IT SCALES
+----------------
+Technical:
+  - The engine is already a pure, tested function: inputs -> results. Running it for
+    1 site or 1,000 sites is the same code; it runs in milliseconds per scenario.
+  - Data sources needed at scale are public or standard: map/GIS data, building-energy
+    surveys, weather archives, grid-emissions datasets, operator telemetry.
+  - The AI layer orchestrates and explains; it does not do the math. Adding more AI
+    use does not make results less reliable.
+
+Market:
+  - Every new AI data center has to remove all of its heat. U.S. data-center electricity
+    was ~176 TWh in 2023 and is projected at 325-580 TWh by 2028 (DOE/LBNL); global
+    ~415 TWh in 2024 to ~945 TWh by 2030 (IEA). Nearly all of that ends up as heat.
+  - Screening is cheap and fast compared with a one-off engineering study, so it can be
+    run on every site, not just the few that get studied today.
+
+Rule of thumb from the demo: ~2,590 MWh of heat reused per MW of IT load per year
+in the baseline scenario. This only scales when there is enough nearby demand, which is
+exactly what the tool checks site by site.
+
+
+4. HOW LENOVO COULD BRING IT TO MARKET (STRATEGIC FIT, NOT A COMMITMENT)
+------------------------------------------------------------------------
+  - Pre-sales: run HeatMatch when customers evaluate liquid-cooled infrastructure, to
+    show the heat-reuse upside of warm-water cooling at their actual site.
+  - Services: a feasibility-screening offer that leads into detailed engineering with
+    partners (district-heating firms, utilities, engineering consultancies).
+  - Sustainability reporting: help customers quantify heat reused and emissions avoided.
+  - Product feedback: aggregate (anonymized) results show which loop temperatures and
+    capture rates unlock the most reuse, informing future cooling designs.
+
+
+5. KEY RISKS AND HOW WE'D HANDLE THEM
+-------------------------------------
+  - Demand data is hard to get -> start from public intensities, calibrate with bills,
+    always label modeled vs. measured.
+  - Seasonal mismatch (summer surplus) -> storage, low-temperature summer customers
+    (greenhouses, pools, industrial), or absorption cooling.
+  - Pipe routes and permits dominate cost -> route analysis in Phase 2; screening flags
+    distance-driven projects early so effort goes to the best candidates.
+  - Over-trust in AI -> engine does all calculations; AI output is labeled and must be
+    confirmed by the user before any setting changes.
+  - Heat-sale contracts and ownership -> finance module plus partner models in Phase 2.
+
+
+6. METRICS WE WOULD TRACK
+-------------------------
+  - Sites screened; candidates found per site; share that pass to detailed study.
+  - MWh of heat actually reused per year; t CO2 avoided (with stated factors).
+  - Accuracy vs. detailed studies (screening error on savings and payback).
+  - Time from "new site" to "first answer" (target: same day).
+
+
+SOURCES
+-------
+  - U.S. DOE / LBNL 2024 Report on U.S. Data Center Energy Use:
+    https://www.energy.gov/articles/doe-releases-new-report-evaluating-increase-electricity-demand-data-centers
+  - IEA, Energy and AI (2025), executive summary:
+    https://www.iea.org/reports/energy-and-ai/executive-summary
+  - Lenovo Press DS0187, ThinkSystem N1380 Neptune datasheet (45 C inlet, heat reuse):
+    https://lenovopress.lenovo.com/ds0187
+  - Open-Meteo Historical Weather API (ERA5): https://open-meteo.com/en/docs/historical-weather-api

@@ -1,8 +1,13 @@
-# Lenovo HeatMatch — Waste-heat reuse feasibility planner (prototype)
+# Lenovo HeatMatch: waste-heat reuse planner for AI data centers (prototype)
 
-> **Prototype · Illustrative scenario.** Customer locations, building demand, and engineering assumptions in this prototype are illustrative demo data. They are not measured customer data or a site-specific feasibility study. Outputs are screening estimates, not engineering, legal, or investment advice.
+> **Prototype · Illustrative scenario.** Customer locations, building demand and most engineering assumptions are illustrative demo data. They are not measured customer data or a site-specific feasibility study. Outputs are screening estimates, not engineering, legal or investment advice.
 >
-> HeatMatch is a concept designed to complement advanced data-center cooling infrastructure (such as warm-water liquid cooling). It is **not** an existing Lenovo product and does not imply Lenovo endorsement.
+> HeatMatch is a concept designed to complement advanced data-center cooling such as warm-water liquid cooling. It is **not** an existing Lenovo product and does not imply Lenovo endorsement.
+
+AI data centers turn almost all of their electricity into heat and usually throw it away. Nearby hospitals, pools, greenhouses and apartments pay to make heat. HeatMatch screens those neighbors in minutes and shows which could use the heat, which can't, and why. It accounts for temperature, demand, distance, seasons, cooling technology and cost.
+
+- U.S. data centers used ~176 TWh in 2023 (~4.4% of U.S. electricity), projected at 325–580 TWh by 2028 ([DOE / LBNL](https://www.energy.gov/articles/doe-releases-new-report-evaluating-increase-electricity-demand-data-centers)).
+- Global data-center electricity was ~415 TWh in 2024, projected at ~945 TWh by 2030 ([IEA, Energy and AI](https://www.iea.org/reports/energy-and-ai/executive-summary)).
 
 ## Run it
 
@@ -11,105 +16,84 @@ Requires Node 18+ (tested on Node 22).
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # engine unit tests (Vitest)
+npm test         # 24 unit tests (Vitest)
 npm run build    # type-check + production build
 ```
 
-Everything runs locally in the browser. There's no backend and no database. The only network dependency is OpenStreetMap map tiles. If the venue Wi-Fi fails, switch the map to **Simple view**.
-
-## Optional: Gemini AI assistant
-
-There are two AI features. Both are optional, and the app works fully without them.
-
-- **Set up → "Ask a what-if in your own words"**: e.g. *"What if electricity got 50% more expensive?"*. Gemini returns structured JSON setting changes. The app throws out unknown settings, keeps values within the slider ranges, shows the proposed changes for you to review, and only applies them when you click **Apply**. **Undo** is available afterwards. The engine then recalculates everything.
-- **Find matches → "Ask about [building]"**: suggested and free-form questions. Gemini receives only the engine's computed results for that building and the ranking, and it is told not to invent data or calculate new numbers. Answers are labeled "AI-generated".
-
-**Setup**
+Optional AI assistant (Gemini):
 
 ```bash
-cp .env.example .env.local     # .env.local is git-ignored
-# put your key from https://aistudio.google.com/apikey into GEMINI_API_KEY
+cp .env.example .env.local     # git-ignored; put your key in GEMINI_API_KEY
 npm run dev                    # restart after editing .env.local
 ```
 
-**How the key stays private:** `server/geminiProxy.ts` is a small middleware inside the Vite dev/preview server (not a separate backend). The browser only calls `/api/ai/*`, and the key is never bundled because it has no `VITE_` prefix. As a result, AI features need `npm run dev` or `npm run preview`. A purely static deployment just shows "AI assistant is turned off". The model defaults to `gemini-3.6-flash`, with `gemini-2.5-flash` as an automatic fallback if it is busy (retry once, then fall back). Override with `GEMINI_MODEL` and `GEMINI_FALLBACK_MODELS`. Answers are cached in memory, so repeating a demo question doesn't hit the network again.
+Everything except map tiles and the optional AI works offline. If the Wi-Fi fails, use **Matches → Offline view**. Without a Gemini key the AI boxes say "AI assistant is off" and everything else works.
 
-### Cooling technology and why Lenovo fits
+## Pages
 
-Set up has a **"How is the data center cooled?"** picker: Air, Rear-door heat exchanger, or Warm-water liquid cooling (Lenovo Neptune-style). Each sets the heat-capture share and the water temperature. Overview has a **"Why liquid cooling matters"** card that reruns the model under all three options with your current settings.
-
-Sourcing: the 45 °C liquid-cooling water temperature is Lenovo's published inlet maximum ([Lenovo Press DS0187, ThinkSystem N1380 Neptune](https://lenovopress.lenovo.com/ds0187)). Outlet water is warmer, so 45 °C is conservative. All capture shares and the air/rear-door temperatures are illustrative. This is presented as strategic fit, not a Lenovo endorsement.
-
-## What it does: a guided, five-step site
-
-The pages use hash routing (`#setup`, `#matches`, …) and share one live model, so changing a setting updates every page.
-
-| Page | Purpose |
+| Page | What it does |
 |---|---|
-| **Home** | Plain-language explanation, a live snapshot (usable heat, ~homes' worth of heat used, good matches) and the "being nearby isn't enough" idea. |
-| **1 · Set up** | What-if scenario cards (Baseline, A Favorable, B Unfavorable, C Limited supply). Settings are grouped with **?** explanations, and expert settings are collapsed. A live "heat flow" panel shows servers → captured → usable → reaches buildings. |
-| **2 · Find matches** | Map (or offline "Simple view") plus a building list. The selected building gets a one-sentence verdict, plain-language reasons, key facts, a yearly money breakdown, and expandable technical details. |
-| **3 · Compare** | Ranked table and a yearly-savings bar chart. Individual estimates are labeled "not all achievable at once". |
-| **4 · Share heat** | Greedy shared-supply allocation: who gets heat, what's left over, unmet demand, and which buildings were skipped and why. |
-| **5 · Report** | Print / Save as PDF, CSV download, an on-screen report preview, a glossary, how the math works, limitations and references. |
+| **Overview** | Headline numbers, top matches, the "Why liquid cooling matters" comparison, and a one-line impact summary. |
+| **Set up** | Cooling technology (air / rear-door / warm-water liquid), the demand model (month-by-month or yearly average), scenario presets, all settings with **?** explanations, a live heat-flow panel, and the AI what-if box with a before/after preview. |
+| **Matches** | Map plus building list. The selected building gets a verdict, up to 3 reasons, key facts, heat use by month, and a folded money breakdown and technical details. Also "Ask about this building" (AI). |
+| **Compare** | Ranked table and yearly-savings chart (individual estimates). |
+| **Share heat** | One heat supply shared out best match first, with no double-counting. Includes a month-by-month chart showing winter shortfall and summer surplus. |
+| **Scenarios** | Save, load, rename, duplicate and delete scenarios, and compare up to 3 with current settings side by side. |
+| **Report** | Print / Save as PDF, CSV download, report preview, glossary, math and limitations, references. |
+| **About** | The problem (sourced stats), who it's for, what's different, why Lenovo, live impact, and **what's built vs. modeled vs. conceptual**. |
 
-Verdicts use everyday labels (Good match / Possible match / Not a fit), with the screening status (Promising / Marginal / Not viable) shown alongside.
+## What is real, what is modeled, what is conceptual
+
+| | |
+|---|---|
+| **Built and working** | Calculation engine (TypeScript, 24 tests); ranking with plain-language reasons; map with offline view; month-by-month supply/demand and shared-supply allocation; cooling comparison; scenario save/compare; Gemini what-ifs (with engine-computed before/after) and grounded Q&A; print report and CSV. |
+| **Real data used** | 2024 daily temperatures for the Greensboro NC area ([Open-Meteo / ERA5](https://open-meteo.com/en/docs/historical-weather-api)), converted to monthly heating degree-days and baked into `src/data/climate.ts`. 45 °C warm-water inlet for liquid cooling ([Lenovo Press DS0187](https://lenovopress.lenovo.com/ds0187)). OpenStreetMap tiles. |
+| **Modeled / illustrative** | All 8 buildings (names, locations, demand, temperatures); costs; prices; emissions factors; heat-pump efficiency heuristic; heat-capture shares; year-round demand shares per building type. |
+| **Conceptual** | Real building discovery and utility data; engineered pipe routes and shared trunk networks; hourly matching and heat storage; live telemetry; full project finance. See `docs/ROADMAP_AND_SCALABILITY.txt`. |
 
 ## Model (src/engine)
 
 | Step | Formula |
 |---|---|
-| Recoverable heat | `IT load × capture fraction × recovery efficiency` (efficiency applied once) |
-| Annual heat | `recoverable MW × operating hours` |
-| Network-available | `annual heat × (1 − distribution loss)` |
-| Delivered | `min(customer demand, network-available)`, or 0 if the required temperature is above the max heat-pump output |
+| Recoverable heat | `IT load × capture share × recovery efficiency` (efficiency applied once) |
+| Usable after pipes | `× operating hours × (1 − distribution loss)` |
+| Monthly split | Supply: steady, spread by days in the month. Demand: `annual × [base share × days/365 + (1 − base share) × HDD_month / HDD_year]` (heating degree-days, base 18 °C) |
+| Delivered | Month by month: `min(demand, supply)`, or 0 if the required temperature is above the heat pump's limit |
 | COP (demo heuristic) | `clamp(5.0 − 0.06 × max(0, T_required − T_source), 2.0, 5.0)` |
-| HP electricity | `delivered ÷ COP` (MWh-e) |
-| Capex | `straight-line m × route multiplier × $/m + fixed connection + (delivered×1000 ÷ full-load h) × $/kW-th` |
-| Operating cost | `HP electricity × 1000 × $/kWh + maintenance (% of capex)` |
-| Net savings | `delivered × 1000 × displaced $/kWh-th − operating cost` |
-| Simple payback | `capex ÷ net savings`, shown only if net savings > 0 |
-| Status | **Not viable**: can't reach the temperature, net ≤ 0, or payback > marginal threshold (20 yrs). **Promising**: payback ≤ 10 yrs. **Marginal**: anything in between |
-| Emissions (illustrative) | `delivered × displaced factor − HP electricity × grid factor` |
+| Costs | Capex = `pipe route × $/m + fixed + heat-pump capacity × $/kW`. Opex = `heat-pump electricity + maintenance (% of capex)` |
+| Net savings / payback | `avoided heating − opex`. Payback = `capex ÷ net` (only if net > 0) |
+| Verdict | Not a fit: temperature too high, net ≤ 0, or payback > 20 yrs. Good match: payback ≤ 10 yrs. Possible: in between |
+| Sharing heat | Greedy, month by month, in rank order. Heat is never allocated twice; any shortfall is backup heating |
 
-Distances come from the seeded coordinates via the Haversine formula. The ranking table shows **individual opportunity estimates**, which can't all happen at once. The portfolio panel is the view that respects the shared supply.
+**Baseline results (10 MW, monthly demand):** 6.3 MW usable heat, 25,905 MWh/yr actually used (57%), $1.48M/yr savings, $11.8M setup, 7.9-yr payback, ~2,920 t CO₂/yr avoided (illustrative). January is 2,243 MWh short; 79% of summer heat goes unused. 3 good matches (greenhouse, hospital, aquatic center), 2 possible (apartments, hotel), 3 not a fit (school: too little demand for the cost; laundry: needs 120 °C; office park: too far).
 
-### Default-scenario outcome (computed, not hardcoded)
+**Cooling comparison (baseline, monthly):** air cooling $1.13M/yr with 8,432 MWh of backup heating; warm-water liquid cooling $1.72M/yr with 1,382 MWh of backup.
 
-| Candidate | Status | Driver |
-|---|---|---|
-| Northside Greenhouse | Promising | large low-temperature demand |
-| Regional Hospital | Promising | close, high demand, 70 °C |
-| Community Aquatic Center | Promising | very close, 40 °C |
-| Maple Court Apartments | Marginal | ~12.5 yr payback |
-| Grandview Hotel | Marginal | 85 °C means a large lift and low COP |
-| Lincoln Middle School | Not viable | small demand vs. connection cost |
-| Eastside Industrial Laundry | Not viable | needs 120 °C process heat, above the heat-pump limit |
-| Riverside Office Park | Not viable | 2.6 km away with low demand, so savings are negative |
+## Gemini AI assistant
+
+- **Ask a what-if** (Set up): Gemini turns plain language into setting changes and returns structured JSON. The app throws out unknown settings, keeps values within slider ranges, and shows the engine's before/after. Then you choose **Apply**, **Save as scenario** or **Discard**.
+- **Ask about a building** (Matches): answers use only the app's own computed results, and every answer is labeled AI-generated.
+- The key stays server-side in a Vite middleware (`server/geminiProxy.ts`), never in the browser. Default model `gemini-3.6-flash`, with one retry, then fallbacks to `gemini-3.8-flash`, `gemini-3.5-flash-lite` and `gemini-flash-latest` when it's busy or a model has been retired. Override with `GEMINI_MODEL` / `GEMINI_FALLBACK_MODELS`.
+- AI needs `npm run dev` or `npm run preview`. A static build shows "AI assistant is off".
 
 ## Demo script (~3 min)
 
-1. **Home**: read the big idea. Then go to **Set up** (Baseline) and point out the heat-flow panel: 10 MW in, 6.3 MW usable.
-2. **Find matches**: click **Regional Hospital** (or the #1 greenhouse) and read the verdict and green reasons.
-3. Click **Eastside Industrial Laundry**: it's close and large but needs 120 °C. Then **Riverside Office Park**: too far for too little demand.
-4. Back on **Set up**, choose **B · Unfavorable** (pipe $3,000/m, power $0.16/kWh). No candidate stays Promising and the hotel and apartments become Not viable.
-5. Choose **C · Limited supply** (4 MW) and open **Share heat**. The portfolio runs out of heat, unmet demand appears, and allocation never exceeds supply.
-6. Close with the key point: the model counts only heat that is delivered *and used*.
-
-## Not implemented (by design, for the one-day MVP)
-
-These are left out: authentication, backend/database, live OSM/Overpass data, real pipe routing, hourly/seasonal matching, validated heat-pump curves, NPV/financing/taxes/grants, pumping energy, lifecycle emissions, and optimization beyond greedy allocation. See the roadmap in the brief.
+1. **Overview**: 6.3 MW usable heat, 3 good matches, and "Why liquid cooling matters": liquid vs. air means +53% savings and much less winter backup heating.
+2. **Matches**: click **Regional Hospital** → good match and why. Then **Eastside Industrial Laundry**: close and large, but needs 120 °C → not a fit.
+3. **Share heat**: the month-by-month chart shows January short by 2,243 MWh and 79% of summer heat unused. The model counts only heat that is delivered *and used*.
+4. **Set up**: ask the AI "What if electricity got 50% more expensive?", show the before/after, then **Save as scenario**.
+5. **Scenarios**: compare current settings vs. the saved what-if vs. **C · Limited supply**.
+6. **About**: what's real, what's modeled, what's conceptual.
 
 ## Structure
 
 ```
 src/
-  engine/      types.ts, thermal.ts, economics.ts, matching.ts, engine.test.ts
-  data/        demoCustomers.ts   (illustrative customers, defaults, scenario presets)
-  pages/       HomePage, SetupPage, MatchesPage, ComparePage, SharePage, ReportPage
-  components/  CustomerMap, ResultsCharts, Report (print + CSV), ui (badges, ? tips, nav buttons)
-  ai/          Gemini client, grounded context builder, what-if validator (+ tests)
-  App.tsx      hash router, shared state, nav, status strip
+  engine/      types, thermal, economics, matching (period-based), seasonal, run (+ tests)
+  data/        demoCustomers, fields, cooling, climate (baked weather), savedScenarios
+  ai/          Gemini client, grounded context, what-if validator (+ tests)
+  pages/       Home, Setup, Matches, Compare, Share, Scenarios, Report, About
+  components/  CustomerMap, ResultsCharts, CoolingCompare, AiPanels, Report, ui
 server/        geminiProxy.ts (Vite middleware; holds the API key)
-  styles/      app.css
+docs/          ROADMAP_AND_SCALABILITY.txt, PITCH_DECK_GUIDE.txt
 ```

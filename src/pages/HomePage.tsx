@@ -1,6 +1,7 @@
 import { ArrowRight, Sparkles } from 'lucide-react';
 import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
 import { CoolingCompare } from '../components/CoolingCompare';
+import type { ModelOptions } from '../engine/run';
 import { MWH_PER_HOME, STATUS_CLASS, fmtMoney, fmtNum, fmtPayback } from '../format';
 import { CategoryTile, StatusBadge } from '../components/ui';
 
@@ -9,9 +10,11 @@ export function HomePage({
   ranked,
   portfolio,
   assumptions,
+  options,
   onOpen,
 }: {
   assumptions: Assumptions;
+  options: ModelOptions;
   supply: SupplySummary;
   ranked: CandidateResult[];
   portfolio: Portfolio;
@@ -95,7 +98,7 @@ export function HomePage({
         </div>
       </section>
 
-      <CoolingCompare assumptions={assumptions} />
+      <CoolingCompare assumptions={assumptions} options={options} />
 
       <section className="split">
         <div className="card idea">
@@ -119,6 +122,16 @@ export function HomePage({
           </a>
         </div>
       </section>
+
+      <a className="impact-link" href="#about">
+        <span>
+          <strong>Impact:</strong> this scenario reuses {fmtNum(portfolio.totalAllocatedMwh)} MWh of heat a year. That’s ≈{' '}
+          {fmtNum(portfolio.totalAllocatedMwh / MWH_PER_HOME)} homes’ worth, from {fmtNum(assumptions.itLoadMw, 0)} MW of servers.
+        </span>
+        <span className="link">
+          The problem, why Lenovo, and what’s real <ArrowRight size={14} />
+        </span>
+      </a>
 
       <p className="fineprint">
         * Rough illustration at ~{MWH_PER_HOME} MWh per home per year. All buildings are fictional demo data, not real customers.

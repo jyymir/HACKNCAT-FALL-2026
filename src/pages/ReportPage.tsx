@@ -16,6 +16,7 @@ const GLOSSARY: [string, string][] = [
 
 const REFERENCES = [
   { label: 'Lenovo Press DS0187: ThinkSystem N1380 Neptune datasheet', url: 'https://lenovopress.lenovo.com/ds0187', why: 'Source of the 45 °C warm-water inlet figure used for liquid cooling' },
+  { label: 'Open-Meteo Historical Weather API (ERA5)', url: 'https://open-meteo.com/en/docs/historical-weather-api', why: 'Source of 2024 Greensboro temperatures used for monthly heating degree-days' },
   { label: 'U.S. EIA: Commercial Buildings Energy Consumption Survey (CBECS)', url: 'https://www.eia.gov/consumption/commercial/', why: 'Could inform future building demand estimates' },
   { label: 'U.S. EPA: eGRID', url: 'https://www.epa.gov/egrid', why: 'Future grid-emissions factors' },
   { label: 'OpenStreetMap', url: 'https://www.openstreetmap.org/', why: 'Future building/location discovery' },
@@ -97,7 +98,7 @@ export function ReportPage(props: {
             </li>
           ))}
         </ul>
-        <p className="fineprint">Only the Lenovo datasheet is used, for the 45 °C liquid-cooling water temperature. The others were not used to create the demo data.</p>
+        <p className="fineprint">Used: the Lenovo datasheet (45 °C liquid-cooling water) and Open-Meteo (2024 weather for monthly demand). The others were not used to create the demo data.</p>
       </details>
 
       <NextStep label="Back to overview" href="#" back={{ label: 'Share heat', href: '#share' }} />

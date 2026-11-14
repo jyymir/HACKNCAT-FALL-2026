@@ -1,0 +1,156 @@
+LENOVO HEATMATCH - PITCH DECK GUIDE
+===================================
+Built around the NC A&T x Lenovo problem statement and rubric:
+  4 questions: Real problem / Who experiences it / What you'd build / Why Lenovo
+  + Human & business value, Innovation, Impact
+  Rubric: Problem & User 15 | Innovation 20 | Technical Execution 25 |
+          Impact & Lenovo Relevance 20 | Feasibility & Scalability 10 | Pitch & Demo 10
+  Technical Integrity requirement: say clearly what you built, what works, what's conceptual.
+
+All numbers below come from the app (baseline scenario, monthly demand model) or from a
+cited source. Re-check them in the app before presenting if you change any settings.
+
+
+SLIDE 1 - TITLE
+  "Lenovo HeatMatch: turning AI data-center heat into local warmth"
+  Subtitle: waste-heat reuse planner. Team names. Small line: "Concept prototype".
+
+SLIDE 2 - THE PROBLEM   (Problem & User - 15)
+  - U.S. data centers: ~176 TWh in 2023 (~4.4% of U.S. electricity), projected
+    325-580 TWh by 2028. [DOE / LBNL]
+  - Global: ~415 TWh in 2024 -> ~945 TWh by 2030. [IEA]
+  - Nearly every watt a server uses becomes heat, and it is usually thrown away.
+  - Meanwhile hospitals, pools, greenhouses and apartments nearby pay to make heat.
+  Say: "The heat is already there. The question nobody can answer quickly is:
+        who nearby could actually use it, and would it pay off?"
+
+SLIDE 3 - WHO EXPERIENCES IT AND WHY IT MATTERS
+  - Data-center planners / sustainability leads: need a fast, defensible first answer
+    before paying for an engineering study.
+  - Building owners: heating bills and emissions targets.
+  - Cities and utilities: AI growth vs. grid load and community benefit.
+  Key insight (the "aha"): BEING CLOSE ISN'T ENOUGH. Temperature, demand, distance,
+  seasons, electricity cost and cooling technology decide whether reuse works.
+
+SLIDE 4 - WHAT WE BUILT   (Technical Execution - 25)
+  One screenshot of Overview + one of Matches. List:
+  - Ranks nearby buildings with plain-language reasons (good / possible / not a fit).
+  - Month-by-month supply vs. demand from real 2024 weather.
+  - Shares one heat supply without double-counting.
+  - Cooling comparison: air vs. rear-door vs. warm-water liquid (Neptune-style).
+  - Scenarios: save and compare side by side.
+  - Gemini AI: plain-English what-ifs with an engine-computed before/after.
+  - 24 automated tests; works offline (except map tiles and AI).
+
+SLIDE 5 - HOW IT WORKS (keep it to one diagram)
+  Data center (IT load, cooling) -> usable heat -> monthly supply
+  Buildings (demand, temperature, distance) + weather -> monthly demand
+  -> heat pump + pipe + cost model -> verdict + reasons -> shared allocation -> report
+  Say: "The AI explains and proposes. The engine calculates. AI never invents numbers."
+
+SLIDE 6 - RESULTS FROM THE DEMO SCENARIO (10 MW site)
+  - 6.3 MW usable heat; 25,905 MWh/yr actually used (57%) ~= 2,160 homes' worth*
+  - ~$1.48M/yr net savings, ~$11.8M setup, ~7.9-year payback
+  - ~2,920 t CO2/yr avoided (illustrative emissions factors)
+  - 3 good matches, 2 possible, 3 not a fit, each with a reason
+    (e.g. laundry is close and big but needs 120 C; office park is too far)
+  - Seasons matter: January is 2,243 MWh short; 79% of summer heat goes unused.
+  * homes comparison is a rough illustration (~12 MWh/home/yr).
+  Say clearly: "These buildings are fictional demo data. The method is what's real."
+
+SLIDE 7 - WHY LENOVO   (Impact & Lenovo Relevance - 20)
+  - Heat reuse depends on capturing heat in WARM water. Lenovo Neptune warm-water
+    cooling supports inlet water up to 45 C and is designed so heat can be reused in
+    building heating. [Lenovo Press DS0187]
+  - In our model, liquid vs. air cooling (same site, monthly demand):
+      savings ~$1.72M vs ~$1.13M per year (+53%)
+      winter backup heating 1,382 vs 8,432 MWh
+  - Lenovo has the infrastructure, services and customer reach to put a screening tool
+    in front of customers at the moment they choose cooling.
+  Wording: "strategic fit", "could help". Never say Lenovo endorses or offers this.
+
+SLIDE 8 - WHAT'S DIFFERENT   (Innovation - 20)
+  Today: one-off engineering studies, one site at a time, often after the design is set.
+  HeatMatch:
+  - Screens many buildings in minutes, before design decisions are locked in.
+  - Explains WHY a building fails, not just a score.
+  - Models seasons and cooling technology, the two things rules of thumb ignore.
+  - AI what-ifs that are checked by a deterministic engine and need user approval.
+
+SLIDE 9 - BUILT vs. MODELED vs. CONCEPTUAL   (Technical Integrity requirement)
+  Built & working: engine + tests, ranking + reasons, map, monthly model, allocation,
+    cooling comparison, scenarios, AI what-ifs/Q&A, report + CSV.
+  Real data: 2024 Greensboro weather (Open-Meteo/ERA5); 45 C Neptune inlet (DS0187);
+    OpenStreetMap tiles.
+  Modeled/illustrative: the 8 buildings, costs, prices, heat-pump curve, capture shares,
+    emissions factors.
+  Conceptual: real building discovery, utility data, engineered pipe routes, shared
+    networks, hourly + storage, full finance, live telemetry.
+  (The app's About page shows this same list. Point to it.)
+
+SLIDE 10 - ROADMAP & SCALABILITY   (Feasibility & Scalability - 10)
+  Phase 1 (0-3 mo): one real pilot site, real buildings (OSM/GIS), CBECS intensities,
+    utility-bill calibration, multi-year weather.
+  Phase 2 (3-9 mo): shared networks, hourly + storage, validated heat-pump curves,
+    NPV/incentives, regional emissions, team backend.
+  Phase 3 (9-24 mo): site selection at portfolio scale, live telemetry, multi-region,
+    partner APIs.
+  Why it scales: the engine is a tested pure function (ms per scenario); inputs are
+  public/standard datasets; demand for AI capacity keeps growing.
+  (Full detail: docs/ROADMAP_AND_SCALABILITY.txt)
+
+SLIDE 11 - VALUE & ASK / CLOSE
+  Who benefits: operators (new value from waste heat, sustainability story),
+  building owners (lower heating bills), communities (lower emissions, local benefit),
+  Lenovo (differentiates liquid-cooled infrastructure at the decision point).
+  Close: "Every AI data center already makes the heat. HeatMatch finds who can use it."
+
+
+DEMO HOOKS (if the deck links to a live demo)
+  1. Overview -> "Why liquid cooling matters" card.
+  2. Matches -> Regional Hospital (good) then Eastside Industrial Laundry (120 C, not a fit).
+  3. Share heat -> month-by-month chart (winter short, summer surplus).
+  4. Set up -> AI: "What if electricity got 50% more expensive?" -> before/after -> Save.
+  5. Scenarios -> side-by-side comparison.
+  Backup plan: no Wi-Fi -> Matches "Offline view"; no AI -> say "AI is optional; the
+  engine does the math", and use the scenario presets instead.
+
+
+LIKELY JUDGE QUESTIONS (with honest answers)
+  Q: Are these real buildings/numbers?
+  A: No. The buildings are fictional demo data; weather and the Neptune 45 C figure are
+     real and cited. Phase 1 replaces demo buildings with real GIS + utility data.
+  Q: What about summer when nobody needs heat?
+  A: That's why we model monthly. Baseline: 79% of summer heat is unused. Fixes: storage,
+     low-temperature summer customers (greenhouses, pools), or absorption cooling.
+  Q: Why does the hospital/greenhouse show more savings on its page than on Share heat?
+  A: The building page is the individual estimate (if it were the only customer).
+     Share heat splits one limited supply across everyone, month by month.
+  Q: How accurate is the heat-pump model?
+  A: It's a simple, labeled heuristic. Phase 2 swaps in manufacturer curves.
+  Q: What does the AI actually do?
+  A: It translates plain English into setting changes and explains results. Every number
+     comes from our tested engine, and changes need the user's approval.
+  Q: Why Lenovo and not any server company?
+  A: Warm-water liquid cooling is what makes heat reusable; Lenovo publishes 45 C inlet
+     operation and heat reuse for Neptune, and has the infrastructure/services reach.
+     We frame it as strategic fit, not an existing Lenovo offering.
+  Q: Pipe costs look simplified.
+  A: Yes: straight-line distance x 1.3 route factor x $/m. Real routing and permits are
+     Phase 2; the screening flags distance-driven projects early.
+
+
+WORDING RULES (protects your Technical Integrity score)
+  DO say: "modeled", "illustrative", "screening estimate", "strategic fit",
+          "needs site-specific engineering".
+  DON'T say: "Lenovo's product", "Lenovo endorses", "measured savings",
+             "machine learning" (the demand model is degree-day rules, not ML),
+             "digital twin" (it's a scenario simulator, not live monitoring).
+
+
+SOURCES TO PUT ON THE SLIDES
+  - DOE / LBNL 2024 Report on U.S. Data Center Energy Use:
+    https://www.energy.gov/articles/doe-releases-new-report-evaluating-increase-electricity-demand-data-centers
+  - IEA, Energy and AI (2025): https://www.iea.org/reports/energy-and-ai/executive-summary
+  - Lenovo Press DS0187 (ThinkSystem N1380 Neptune): https://lenovopress.lenovo.com/ds0187
+  - Open-Meteo Historical Weather API (ERA5): https://open-meteo.com/en/docs/historical-weather-api

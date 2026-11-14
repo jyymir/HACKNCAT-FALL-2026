@@ -107,7 +107,7 @@ export function PortfolioPanel({ portfolio: p, ranked }: { portfolio: Portfolio;
             <tr>
               <th>Building</th>
               <th className="r">Gets</th>
-              <th className="r">Still needs</th>
+              <th className="r">Backup heating</th>
             </tr>
           </thead>
           <tbody>
@@ -128,5 +128,67 @@ export function PortfolioPanel({ portfolio: p, ranked }: { portfolio: Portfolio;
         </table>
       </section>
     </>
+  );
+}
+
+/**
+ * Month-by-month balance: delivered heat + backup heating needed (stacked = eligible demand),
+ * against the data center's monthly supply (dashed tick). Only shown in monthly mode.
+ */
+export function MonthlyChart({ portfolio: p }: { portfolio: Portfolio }) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const max = Math.max(...p.periods.map((x) => Math.max(x.supplyMwh, x.demandMwh)), 1);
+  const worst = p.periods.reduce((w, x, i) => (x.unmetMwh > p.periods[w].unmetMwh ? i : w), 0);
+  const summer = [5, 6, 7]; // Jun–Aug
+  const sumSupply = summer.reduce((s, i) => s + p.periods[i].supplyMwh, 0);
+  const sumUnused = summer.reduce((s, i) => s + p.periods[i].unusedMwh, 0);
+  const summerUnusedPct = sumSupply > 0 ? (sumUnused / sumSupply) * 100 : 0;
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <div className="card-title">Month by month</div>
+          <div className="card-sub">Steady data-center heat vs. weather-driven building demand.</div>
+        </div>
+        <div className="month-facts">
+          {p.periods[worst].unmetMwh > 0 && (
+            <span className="status-pill warn">
+              {months[worst]}: {fmtNum(p.periods[worst].unmetMwh)} MWh short
+            </span>
+          )}
+          <span className="status-pill neutral">Summer: {fmtNum(summerUnusedPct)}% of heat unused</span>
+        </div>
+      </div>
+
+      <div className="month-chart" role="img" aria-label="Monthly heat supply, delivered heat and backup heating needed">
+        {p.periods.map((x, i) => (
+          <div key={i} className="mc-col" title={`${months[i]}: supply ${fmtNum(x.supplyMwh)} · demand ${fmtNum(x.demandMwh)} · delivered ${fmtNum(x.deliveredMwh)} · backup ${fmtNum(x.unmetMwh)} MWh`}>
+            <div className="mc-plot">
+              <span className="mc-supply" style={{ bottom: `${(x.supplyMwh / max) * 100}%` }} />
+              <div className="mc-stack" style={{ height: `${(x.demandMwh / max) * 100}%` }}>
+                <span className="mc-unmet" style={{ flexGrow: x.unmetMwh }} />
+                <span className="mc-delivered" style={{ flexGrow: x.deliveredMwh }} />
+              </div>
+            </div>
+            <span className="mc-label">{months[i]}</span>
+          </div>
+        ))}
+      </div>
+      <div className="stack-legend">
+        <span>
+          <i style={{ background: 'var(--red)' }} />
+          Heat delivered
+        </span>
+        <span>
+          <i className="unmet-swatch" />
+          Backup heating needed
+        </span>
+        <span>
+          <i className="supply-swatch" />
+          Heat available from data center
+        </span>
+      </div>
+    </section>
   );
 }

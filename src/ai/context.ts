@@ -1,6 +1,8 @@
 import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
 import { STATUS_LABEL } from '../format';
 import { detectCooling } from '../data/cooling';
+import type { ModelOptions } from '../engine/run';
+import { MONTHS } from '../data/climate';
 
 const r0 = (n: number) => Math.round(n);
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -15,6 +17,7 @@ export function buildMatchContext(
   a: Assumptions,
   supply: SupplySummary,
   portfolio: Portfolio,
+  options: ModelOptions,
 ) {
   const summarize = (r: CandidateResult) => ({
     rank: r.rank,
@@ -31,6 +34,7 @@ export function buildMatchContext(
   return {
     note: 'All buildings and values are fictional illustrative demo data. Figures are modeled estimates from a simplified screening model.',
     settings: {
+      demandModel: options.seasonal ? 'monthly, weather-based (winter peaks, summer surplus)' : 'yearly average',
       coolingTechnology: detectCooling(a)?.label ?? 'custom values',
       itLoadMw: a.itLoadMw,
       heatCapturePct: r0(a.heatCaptureFraction * 100),
@@ -61,6 +65,10 @@ export function buildMatchContext(
       modelReasons: selected.reasons.map((x) => x.text),
     },
     allBuildingsRanked: ranked.map(summarize),
+    monthlyBalance:
+      portfolio.periods.length === 12
+        ? portfolio.periods.map((p, i) => ({ month: MONTHS[i], supplyMwh: r0(p.supplyMwh), demandMwh: r0(p.demandMwh), deliveredMwh: r0(p.deliveredMwh), backupNeededMwh: r0(p.unmetMwh) }))
+        : 'not modeled (yearly average mode)',
     sharedHeat: {
       totalGivenMwh: r0(portfolio.totalAllocatedMwh),
       leftOverMwh: r0(portfolio.remainingUnusedMwh),

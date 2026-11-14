@@ -5,6 +5,8 @@ import { GROUPS, type FieldDef } from '../data/fields';
 import { MWH_PER_HOME, fmtNum } from '../format';
 import { Info, NextStep, PageHeader } from '../components/ui';
 import { WhatIfBox } from '../components/AiPanels';
+import type { ModelOptions } from '../engine/run';
+import { CLIMATE_SOURCE } from '../data/climate';
 import { COOLING_OPTIONS, detectCooling, withCooling } from '../data/cooling';
 
 function CoolingPicker({ a, onChange }: { a: Assumptions; onChange: (a: Assumptions) => void }) {
@@ -147,8 +149,36 @@ function HeatFlow({ a, supply, portfolio }: { a: Assumptions; supply: SupplySumm
   );
 }
 
+function DemandModelCard({ options, onOptions }: { options: ModelOptions; onOptions: (o: ModelOptions) => void }) {
+  return (
+    <section className="card demand-card">
+      <div>
+        <div className="card-title">
+          When do buildings need heat?{' '}
+          <Info>
+            Monthly mode spreads each building’s yearly heat use by local weather (heating degree-days) plus a year-round share for hot water or process heat.
+            The data center makes the same heat every month, so winter can run short while summer has heat to spare. Weather: {CLIMATE_SOURCE.basis}.
+          </Info>
+        </div>
+        <div className="card-sub">{options.seasonal ? 'More heat needed in winter, less in summer.' : 'Simplified: demand spread evenly over the year.'}</div>
+      </div>
+      <div className="seg-pills" role="group" aria-label="Demand model">
+        <button className={options.seasonal ? 'active' : ''} onClick={() => onOptions({ seasonal: true })}>
+          Month by month (weather)
+        </button>
+        <button className={!options.seasonal ? 'active' : ''} onClick={() => onOptions({ seasonal: false })}>
+          Yearly average
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function SetupPage({
   assumptions,
+  options,
+  onOptions,
+  onSaveScenario,
   onChange,
   onScenario,
   activeScenario,
@@ -159,6 +189,9 @@ export function SetupPage({
   onChange: (a: Assumptions) => void;
   onScenario: (id: string) => void;
   activeScenario: string;
+  options: ModelOptions;
+  onOptions: (o: ModelOptions) => void;
+  onSaveScenario: (name: string, a: Assumptions) => void;
   supply: SupplySummary;
   portfolio: Portfolio;
 }) {
@@ -179,6 +212,7 @@ export function SetupPage({
       </div>
 
       <CoolingPicker a={assumptions} onChange={onChange} />
+      <DemandModelCard options={options} onOptions={onOptions} />
 
       <div className="setup-grid">
         <div className="card">
@@ -198,7 +232,7 @@ export function SetupPage({
 
         <div className="side-stack">
           <HeatFlow a={assumptions} supply={supply} portfolio={portfolio} />
-          <WhatIfBox assumptions={assumptions} onApply={onChange} />
+          <WhatIfBox assumptions={assumptions} options={options} onApply={onChange} onSaveScenario={onSaveScenario} />
         </div>
       </div>
 

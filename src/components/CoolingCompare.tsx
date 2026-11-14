@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Assumptions } from '../engine/types';
-import { portfolioElectricityMwh, runModel } from '../engine/run';
+import { portfolioElectricityMwh, runModel, type ModelOptions } from '../engine/run';
 import { COOLING_OPTIONS, NEPTUNE_SOURCE, detectCooling, withCooling } from '../data/cooling';
 import { DEMO_CUSTOMERS, DEMO_DATA_CENTER } from '../data/demoCustomers';
 import { fmtMoney, fmtNum } from '../format';
@@ -9,11 +9,11 @@ import { fmtMoney, fmtNum } from '../format';
  * "Why Lenovo" card: the same data center and neighbors under three cooling technologies,
  * recalculated live from the current settings (only capture share and water temperature change).
  */
-export function CoolingCompare({ assumptions }: { assumptions: Assumptions }) {
+export function CoolingCompare({ assumptions, options }: { assumptions: Assumptions; options: ModelOptions }) {
   const rows = useMemo(
     () =>
       COOLING_OPTIONS.map((c) => {
-        const run = runModel(withCooling(assumptions, c), DEMO_DATA_CENTER, DEMO_CUSTOMERS);
+        const run = runModel(withCooling(assumptions, c), DEMO_DATA_CENTER, DEMO_CUSTOMERS, options);
         return {
           c,
           mw: run.supply.recoverableHeatMw,
@@ -26,7 +26,7 @@ export function CoolingCompare({ assumptions }: { assumptions: Assumptions }) {
           kwhPerMwh: run.portfolio.totalAllocatedMwh > 0 ? (portfolioElectricityMwh(run.portfolio) * 1000) / run.portfolio.totalAllocatedMwh : 0,
         };
       }),
-    [assumptions],
+    [assumptions, options],
   );
   const maxMw = Math.max(...rows.map((r) => r.mw), 1);
   const current = detectCooling(assumptions)?.id;

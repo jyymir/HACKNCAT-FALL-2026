@@ -1,5 +1,5 @@
 import type { CandidateResult, Portfolio } from '../engine/types';
-import { PortfolioPanel } from '../components/ResultsCharts';
+import { MonthlyChart, PortfolioPanel } from '../components/ResultsCharts';
 import { Info, NextStep, PageHeader } from '../components/ui';
 import { fmtNum } from '../format';
 
@@ -19,11 +19,13 @@ export function SharePage({ portfolio, ranked }: { portfolio: Portfolio; ranked:
         }
       >
         <span className={`status-pill ${short ? 'warn' : 'ok'}`}>
-          {short ? `${fmtNum(portfolio.totalUnmetDemandMwh)} MWh short` : `${fmtNum(portfolio.remainingUnusedMwh)} MWh spare`}
+          {short ? `${fmtNum(portfolio.totalUnmetDemandMwh)} MWh needs backup heating` : `${fmtNum(portfolio.remainingUnusedMwh)} MWh spare`}
         </span>
       </PageHeader>
 
       <PortfolioPanel portfolio={portfolio} ranked={ranked} />
+
+      {portfolio.periods.length === 12 && <MonthlyChart portfolio={portfolio} />}
 
       {excluded.length > 0 && (
         <details className="card fold-card">
