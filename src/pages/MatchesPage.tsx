@@ -1,138 +1,101 @@
 import type { Allocation, Assumptions, CandidateResult, DataCenter, Portfolio, SupplySummary } from '../engine/types';
+import { CustomerMap } from '../components/CustomerMap';
 import { AskBox } from '../components/AiPanels';
 import { buildMatchContext } from '../ai/context';
-import { CustomerMap } from '../components/CustomerMap';
-import { Info, NextStep, PageIntro, StatusBadge } from '../components/ui';
-import { STATUS_BLURB, STATUS_CLASS, fmtDistance, fmtMoney, fmtNum, fmtPayback } from '../format';
+import { CategoryTile, Info, NextStep, PageHeader, StatusBadge } from '../components/ui';
+import { STATUS_CLASS, fmtDistance, fmtMoney, fmtNum, fmtPayback } from '../format';
 
+/** One short, plain sentence summarizing the verdict. */
 function headline(r: CandidateResult): string {
   const e = r.individual;
-  const n = r.customer.name;
-  if (!r.technicallyServable) return `${n} isn’t a fit: it needs hotter heat than this system can make.`;
-  if (e.simplePaybackYears === null) return `${n} isn’t a fit: it would lose about ${fmtMoney(-e.netAnnualSavings)} a year.`;
-  const pb = e.simplePaybackYears.toFixed(0);
-  if (r.status === 'Promising')
-    return `${n} looks like a good match. It could save about ${fmtMoney(e.netAnnualSavings)} a year and pay back its ${fmtMoney(e.connectionCapex)} setup cost in about ${pb} years.`;
-  if (r.status === 'Marginal')
-    return `${n} could work, but slowly. It saves about ${fmtMoney(e.netAnnualSavings)} a year, so the ${fmtMoney(e.connectionCapex)} setup cost takes about ${pb} years to recover.`;
-  return `${n} isn’t a fit: it saves only ${fmtMoney(e.netAnnualSavings)} a year against a ${fmtMoney(e.connectionCapex)} setup cost (~${pb} years to pay back).`;
+  if (!r.technicallyServable) return 'Needs hotter heat than this system can make.';
+  if (e.simplePaybackYears === null) return `Would lose about ${fmtMoney(-e.netAnnualSavings)} a year.`;
+  const pb = e.simplePaybackYears.toFixed(1);
+  if (r.status === 'Promising') return `Pays back its ${fmtMoney(e.connectionCapex)} setup cost in about ${pb} years.`;
+  if (r.status === 'Marginal') return `Works, but the ${fmtMoney(e.connectionCapex)} setup cost takes ~${pb} years to recover.`;
+  return `Saves too little to justify a ${fmtMoney(e.connectionCapex)} setup cost (~${pb} years).`;
 }
 
-function MoneyFlow({ r }: { r: CandidateResult }) {
-  const e = r.individual;
-  const items = [
-    { label: 'Heating bill avoided', value: e.avoidedHeatingCost, sign: '+' },
-    { label: 'Electricity for the heat pump', value: -e.heatPumpElectricityCost, sign: '−' },
-    { label: 'Yearly upkeep', value: -e.maintenanceCost, sign: '−' },
-  ];
-  return (
-    <div className="money">
-      <div className="kv-title">Money each year (modeled)</div>
-      {items.map((x) => (
-        <div key={x.label} className="money-row">
-          <span>
-            <b className={x.value >= 0 ? 'plus' : 'minus'}>{x.sign}</b> {x.label}
-          </span>
-          <span>{fmtMoney(Math.abs(x.value))}</span>
-        </div>
-      ))}
-      <div className={`money-row total ${e.netAnnualSavings < 0 ? 'neg' : ''}`}>
-        <span>= Net savings per year</span>
-        <span>{fmtMoney(e.netAnnualSavings)}</span>
-      </div>
-      <div className="money-row">
-        <span>One-time setup cost (pipe + equipment)</span>
-        <span>{fmtMoney(e.connectionCapex)}</span>
-      </div>
-      <div className="money-row">
-        <span>Time to pay for itself</span>
-        <strong>{fmtPayback(e.simplePaybackYears)}</strong>
-      </div>
-    </div>
-  );
-}
+const Row = ({ k, v }: { k: string; v: string }) => (
+  <div className="kv">
+    <span>{k}</span>
+    <strong>{v}</strong>
+  </div>
+);
 
 function Detail({ r, allocation, a }: { r: CandidateResult; allocation?: Allocation; a: Assumptions }) {
   const e = r.individual;
   return (
-    <section className={`panel detail tone-${STATUS_CLASS[r.status]}`} aria-live="polite">
-      <div className="detail-head">
-        <div>
-          <div className="panel-sub">
-            {r.customer.category} · {fmtDistance(r.straightLineM)} away · <em>{r.customer.dataQuality}</em>
+    <section className="card detail" aria-live="polite">
+      <div className={`detail-hero ${STATUS_CLASS[r.status]}`}>
+        <div className="detail-id">
+          <CategoryTile category={r.customer.category} size="lg" />
+          <div>
+            <h2>{r.customer.name}</h2>
+            <span>
+              {r.customer.category} · {fmtDistance(r.straightLineM)} away
+            </span>
           </div>
-          <h3>{r.customer.name}</h3>
-          <div className="panel-sub">Uses heat for: {r.customer.heatUse.toLowerCase()}</div>
         </div>
         <StatusBadge status={r.status} technical />
+        <div className="detail-num">
+          <strong className={e.netAnnualSavings < 0 ? 'neg' : ''}>{fmtMoney(e.netAnnualSavings)}</strong>
+          <span>net savings / year</span>
+        </div>
+        <p className="detail-headline">{headline(r)}</p>
       </div>
 
-      <p className="headline">{headline(r)}</p>
-
-      <div className="kv-title">Why</div>
       <ul className="reasons">
-        {r.reasons.map((x, i) => (
+        {/* The headline already states the payback, so skip the duplicate payback reason. */}
+        {(e.simplePaybackYears !== null ? r.reasons.slice(1) : r.reasons).slice(0, 3).map((x, i) => (
           <li key={i} className={x.tone}>
             {x.text}
           </li>
         ))}
       </ul>
 
-      <div className="facts">
+      <div className="stat-tiles">
         <div>
           <span>Heat it uses</span>
           <strong>{fmtNum(r.customer.annualDemandMwh)} MWh/yr</strong>
         </div>
         <div>
-          <span>Water temperature it needs</span>
+          <span>Needs water at</span>
           <strong>{r.customer.requiredTempC} °C</strong>
         </div>
         <div>
-          <span>Heat we could supply</span>
-          <strong>{r.technicallyServable ? `${fmtNum(e.deliveredHeatMwh)} MWh/yr` : 'None'}</strong>
-        </div>
-        <div>
           <span>
-            Heat-pump efficiency <Info>Units of heat produced per unit of electricity (COP). Higher is better. The bigger the temperature boost, the lower it gets. This is a simplified estimate.</Info>
+            Heat-pump efficiency <Info>Units of heat made per unit of electricity (COP). Higher is better. It drops as the needed temperature rises. Simplified estimate.</Info>
           </span>
           <strong>{r.technicallyServable ? `${e.cop.toFixed(1)}×` : 'n/a'}</strong>
         </div>
       </div>
 
-      <MoneyFlow r={r} />
-
-      <details className="tech">
-        <summary>Show technical details</summary>
-        <div className="kv-grid">
-          <div>
-            <Row k="Straight-line distance" v={fmtDistance(r.straightLineM)} />
-            <Row k={`Estimated pipe route (× ${a.routeMultiplier})`} v={fmtDistance(r.routeLengthM)} />
-            <Row k="Heat available to this building (after losses)" v={`${fmtNum(r.heatAvailableToCustomerMwh)} MWh-th`} />
-            <Row k="Temperature lift" v={`${fmtNum(e.temperatureLiftC)} °C`} />
-            <Row k="COP (demo heuristic)" v={e.cop.toFixed(2)} />
-            <Row k="Heat-pump electricity" v={`${fmtNum(e.heatPumpElectricityMwh)} MWh-e`} />
-          </div>
-          <div>
-            <Row k="Pipeline capex" v={fmtMoney(e.pipelineCapex)} />
-            <Row k="Fixed connection" v={fmtMoney(a.fixedConnectionCost)} />
-            <Row k="Heat-pump equipment" v={fmtMoney(e.equipmentCapex)} />
-            <Row k="Annual operating cost" v={fmtMoney(e.annualOperatingCost)} />
-            <Row k="Net avoided emissions (illustrative)" v={`${fmtNum(e.netAvoidedEmissionsT)} t CO₂e/yr`} />
-            <Row k="Shared-supply allocation" v={allocation && allocation.allocatedMwh > 0 ? `${fmtNum(allocation.allocatedMwh)} MWh-th` : 'Not allocated'} />
-          </div>
-        </div>
+      <details className="fold">
+        <summary>Money breakdown</summary>
+        <Row k="+ Heating bill avoided" v={fmtMoney(e.avoidedHeatingCost)} />
+        <Row k="− Heat-pump electricity" v={fmtMoney(e.heatPumpElectricityCost)} />
+        <Row k="− Yearly upkeep" v={fmtMoney(e.maintenanceCost)} />
+        <Row k="= Net per year" v={fmtMoney(e.netAnnualSavings)} />
+        <Row k="One-time setup cost" v={fmtMoney(e.connectionCapex)} />
+        <Row k="Pays back in" v={fmtPayback(e.simplePaybackYears)} />
       </details>
-      <p className="note">Modeled estimate with illustrative data. A real project needs site-specific engineering checks.</p>
+
+      <details className="fold">
+        <summary>Technical details</summary>
+        <Row k={`Pipe route (straight line × ${a.routeMultiplier})`} v={fmtDistance(r.routeLengthM)} />
+        <Row k="Heat supplied" v={r.technicallyServable ? `${fmtNum(e.deliveredHeatMwh)} MWh-th/yr` : 'None'} />
+        <Row k="Temperature lift · COP" v={`${fmtNum(e.temperatureLiftC)} °C · ${e.cop.toFixed(2)}`} />
+        <Row k="Heat-pump electricity" v={`${fmtNum(e.heatPumpElectricityMwh)} MWh-e/yr`} />
+        <Row k="Capex: pipe · equipment · fixed" v={`${fmtMoney(e.pipelineCapex)} · ${fmtMoney(e.equipmentCapex)} · ${fmtMoney(a.fixedConnectionCost)}`} />
+        <Row k="Net avoided emissions (illustrative)" v={`${fmtNum(e.netAvoidedEmissionsT)} t CO₂e/yr`} />
+        <Row k="Shared-heat allocation" v={allocation && allocation.allocatedMwh > 0 ? `${fmtNum(allocation.allocatedMwh)} MWh-th` : 'Not allocated'} />
+      </details>
+
+      <p className="fineprint">Illustrative estimate. A real project needs site-specific engineering checks.</p>
     </section>
   );
 }
-
-const Row = ({ k, v }: { k: string; v: string }) => (
-  <div className="kv">
-    <span className="k">{k}</span>
-    <span className="v">{v}</span>
-  </div>
-);
 
 export function MatchesPage({
   dc,
@@ -145,33 +108,30 @@ export function MatchesPage({
   onSelect,
 }: {
   dc: DataCenter;
-  supply: SupplySummary;
-  portfolio: Portfolio;
   ranked: CandidateResult[];
   selected: CandidateResult;
   allocation?: Allocation;
   assumptions: Assumptions;
+  supply: SupplySummary;
+  portfolio: Portfolio;
   onSelect: (id: string) => void;
 }) {
   return (
     <div className="page">
-      <PageIntro step="Step 2 of 5" title="Which neighbors could use the heat?">
-        Each dot is a nearby building (fictional demo examples). Click one, on the map or in the list, to see the verdict and the reasons in plain language.
-      </PageIntro>
+      <PageHeader title="Matches" sub="Pick a building to see if it’s a fit, and why." />
 
       <div className="matches-grid">
-        <div className="matches-left">
+        <div className="col">
           <CustomerMap dc={dc} ranked={ranked} selectedId={selected.customer.id} onSelect={onSelect} />
-          <div className="cand-cards" role="list">
+          <div className="card list-card">
             {ranked.map((r) => (
               <button
                 key={r.customer.id}
-                role="listitem"
-                className={`cand-card ${r.customer.id === selected.customer.id ? 'selected' : ''} ${STATUS_CLASS[r.status]}`}
+                className={`list-row ${r.customer.id === selected.customer.id ? 'selected' : ''}`}
                 onClick={() => onSelect(r.customer.id)}
               >
-                <span className="cand-rank">#{r.rank}</span>
-                <span className="cand-main">
+                <CategoryTile category={r.customer.category} />
+                <span className="list-main">
                   <strong>{r.customer.name}</strong>
                   <span>
                     {r.customer.category} · {fmtDistance(r.straightLineM)}
@@ -181,15 +141,8 @@ export function MatchesPage({
               </button>
             ))}
           </div>
-          <div className="legend-box">
-            {(['Promising', 'Marginal', 'Not viable'] as const).map((s) => (
-              <div key={s}>
-                <StatusBadge status={s} technical /> <span>{STATUS_BLURB[s]}</span>
-              </div>
-            ))}
-          </div>
         </div>
-        <div className="matches-right">
+        <div className="col">
           <Detail r={selected} allocation={allocation} a={assumptions} />
           <AskBox
             key={selected.customer.id}
@@ -200,7 +153,7 @@ export function MatchesPage({
         </div>
       </div>
 
-      <NextStep label="Compare them side by side" href="#compare" back={{ label: 'Data center settings', href: '#setup' }} />
+      <NextStep label="Compare all" href="#compare" back={{ label: 'Set up', href: '#setup' }} />
     </div>
   );
 }

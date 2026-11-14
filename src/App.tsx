@@ -1,37 +1,37 @@
 import { useEffect, useMemo, useState } from 'react';
+import { BarChart3, Download, FileText, Flame, LayoutGrid, MapPin, PieChart, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import type { Assumptions } from './engine/types';
 import { computeSupply } from './engine/thermal';
 import { allocatePortfolio, evaluateCandidates } from './engine/matching';
 import { DEFAULT_ASSUMPTIONS, DEMO_CUSTOMERS, DEMO_DATA_CENTER, SCENARIOS } from './data/demoCustomers';
-import { Report } from './components/Report';
+import { Report, downloadCsv } from './components/Report';
 import { HomePage } from './pages/HomePage';
 import { SetupPage } from './pages/SetupPage';
 import { MatchesPage } from './pages/MatchesPage';
 import { ComparePage } from './pages/ComparePage';
 import { SharePage } from './pages/SharePage';
 import { ReportPage } from './pages/ReportPage';
-import { fmtNum } from './format';
 
-const PAGES = [
-  { id: '', label: 'Home', step: '' },
-  { id: 'setup', label: 'Set up', step: '1' },
-  { id: 'matches', label: 'Find matches', step: '2' },
-  { id: 'compare', label: 'Compare', step: '3' },
-  { id: 'share', label: 'Share heat', step: '4' },
-  { id: 'report', label: 'Report', step: '5' },
-] as const;
-type PageId = (typeof PAGES)[number]['id'];
+const PAGES: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: '', label: 'Overview', icon: LayoutGrid },
+  { id: 'setup', label: 'Set up', icon: SlidersHorizontal },
+  { id: 'matches', label: 'Matches', icon: MapPin },
+  { id: 'compare', label: 'Compare', icon: BarChart3 },
+  { id: 'share', label: 'Share heat', icon: PieChart },
+  { id: 'report', label: 'Report', icon: FileText },
+];
 
 /** Tiny hash router: #setup, #matches, … (no extra dependency, works from a static file). */
-function useHashPage(): PageId {
+function useHashPage(): string {
   const read = () => {
     const h = window.location.hash.replace(/^#\/?/, '');
-    return (PAGES.find((p) => p.id === h)?.id ?? '') as PageId;
+    return PAGES.find((p) => p.id === h)?.id ?? '';
   };
-  const [page, setPage] = useState<PageId>(read);
+  const [page, setPage] = useState(read);
   useEffect(() => {
     const onHash = () => {
       setPage(read());
+      document.querySelector('.canvas')?.scrollTo({ top: 0 });
       window.scrollTo({ top: 0 });
     };
     window.addEventListener('hashchange', onHash);
@@ -43,7 +43,7 @@ function useHashPage(): PageId {
 export default function App() {
   const page = useHashPage();
   const [assumptions, setAssumptions] = useState<Assumptions>(DEFAULT_ASSUMPTIONS);
-  const [scenarioId, setScenarioId] = useState<string | null>('baseline');
+  const [scenarioId, setScenarioId] = useState<string>('baseline');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Every input change recomputes the full pipeline: supply → candidates → ranking → portfolio.
@@ -55,8 +55,6 @@ export default function App() {
 
   const selected = ranked.find((r) => r.customer.id === selectedId) ?? ranked[0];
   const allocation = portfolio.allocations.find((x) => x.customerId === selected.customer.id);
-  const scenario = SCENARIOS.find((s) => s.id === scenarioId);
-  const good = ranked.filter((r) => r.status === 'Promising').length;
 
   const applyScenario = (id: string) => {
     const s = SCENARIOS.find((x) => x.id === id);
@@ -64,76 +62,93 @@ export default function App() {
     setAssumptions(s.assumptions);
     setScenarioId(id);
   };
+  const editAssumptions = (a: Assumptions) => {
+    setAssumptions(a);
+    setScenarioId('custom');
+  };
+  const openMatch = (id: string) => {
+    setSelectedId(id);
+    window.location.hash = 'matches';
+  };
 
   return (
     <>
-      <div className="app screen-only">
-        <header className="topbar">
-          <a className="brand" href="#">
-            <span className="logo-dot" aria-hidden />
-            <span>
-              <strong>Lenovo HeatMatch</strong>
-              <small>Waste-heat reuse feasibility planner</small>
-            </span>
+      <div className="shell screen-only">
+        <aside className="sidebar" aria-label="Main navigation">
+          <a className="logo" href="#" title="Lenovo HeatMatch">
+            <Flame size={22} strokeWidth={2.2} />
           </a>
-          <span className="tag">Prototype · Illustrative scenario</span>
-        </header>
+          <nav className="side-nav">
+            {PAGES.map((p) => {
+              const Icon = p.icon;
+              const active = page === p.id;
+              return (
+                <a key={p.id} href={`#${p.id}`} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined}>
+                  <Icon size={20} strokeWidth={1.9} />
+                  <span>{p.label}</span>
+                </a>
+              );
+            })}
+          </nav>
+        </aside>
 
-        <nav className="nav" aria-label="Pages">
-          {PAGES.map((p) => (
-            <a key={p.id} href={`#${p.id}`} className={page === p.id ? 'active' : ''} aria-current={page === p.id ? 'page' : undefined}>
-              {p.step && <span className="nav-step">{p.step}</span>}
-              {p.label}
-            </a>
-          ))}
-        </nav>
+        <div className="canvas">
+          <header className="topbar">
+            <div className="brandline">
+              <strong>Lenovo HeatMatch</strong>
+              <span className="chip-soft">Prototype · Illustrative</span>
+            </div>
+            <div className="topbar-actions">
+              <label className="select-pill">
+                <span className="sr-only">Scenario</span>
+                <select value={scenarioId} onChange={(e) => applyScenario(e.target.value)} aria-label="Scenario">
+                  {SCENARIOS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                  {scenarioId === 'custom' && <option value="custom">Custom settings</option>}
+                </select>
+              </label>
+              <button className="pill dark" onClick={() => downloadCsv(ranked)}>
+                <Download size={15} /> Export CSV
+              </button>
+            </div>
+          </header>
 
-        {page !== '' && (
-          <div className="status-strip" aria-live="polite">
-            <span>
-              <b>Scenario:</b> {scenario ? scenario.label : 'Custom settings'}
-            </span>
-            <span>
-              <b>{fmtNum(assumptions.itLoadMw, 1)} MW</b> data center → <b>{fmtNum(supply.recoverableHeatMw, 1)} MW</b> usable heat
-            </span>
-            <span>
-              <b>{good}</b> good match{good === 1 ? '' : 'es'} of {ranked.length}
-            </span>
-            {page !== 'setup' && (
-              <a href="#setup" className="strip-link">
-                Change settings
-              </a>
+          <main className="content">
+            {page === '' && <HomePage supply={supply} ranked={ranked} portfolio={portfolio} onOpen={openMatch} />}
+            {page === 'setup' && (
+              <SetupPage
+                assumptions={assumptions}
+                activeScenario={scenarioId}
+                onScenario={applyScenario}
+                onChange={editAssumptions}
+                supply={supply}
+                portfolio={portfolio}
+              />
             )}
-          </div>
-        )}
+            {page === 'matches' && (
+              <MatchesPage
+                dc={DEMO_DATA_CENTER}
+                ranked={ranked}
+                selected={selected}
+                allocation={allocation}
+                assumptions={assumptions}
+                supply={supply}
+                portfolio={portfolio}
+                onSelect={setSelectedId}
+              />
+            )}
+            {page === 'compare' && <ComparePage ranked={ranked} selectedId={selected.customer.id} onOpen={openMatch} />}
+            {page === 'share' && <SharePage portfolio={portfolio} ranked={ranked} />}
+            {page === 'report' && <ReportPage assumptions={assumptions} supply={supply} ranked={ranked} portfolio={portfolio} selected={selected} />}
+          </main>
 
-        <main className="content">
-          {page === '' && <HomePage supply={supply} ranked={ranked} portfolio={portfolio} />}
-          {page === 'setup' && (
-            <SetupPage
-              assumptions={assumptions}
-              activeScenario={scenarioId}
-              onScenario={applyScenario}
-              onChange={(a) => {
-                setAssumptions(a);
-                setScenarioId(null);
-              }}
-              supply={supply}
-              portfolio={portfolio}
-            />
-          )}
-          {page === 'matches' && (
-            <MatchesPage dc={DEMO_DATA_CENTER} ranked={ranked} selected={selected} allocation={allocation} assumptions={assumptions} supply={supply} portfolio={portfolio} onSelect={setSelectedId} />
-          )}
-          {page === 'compare' && <ComparePage ranked={ranked} selectedId={selected.customer.id} onSelect={setSelectedId} />}
-          {page === 'share' && <SharePage portfolio={portfolio} ranked={ranked} />}
-          {page === 'report' && <ReportPage assumptions={assumptions} supply={supply} ranked={ranked} portfolio={portfolio} selected={selected} />}
-        </main>
-
-        <footer className="footer">
-          Illustrative screening estimate, not engineering, legal, or investment advice. Only heat a building actually uses is counted, not all the heat the data
-          center produces. HeatMatch is a concept prototype designed to complement advanced data-center cooling. It is not an existing Lenovo product.
-        </footer>
+          <footer className="footer">
+            Illustrative screening estimate, not engineering, legal, or investment advice. Concept prototype; not an existing Lenovo product.
+          </footer>
+        </div>
       </div>
       <Report assumptions={assumptions} supply={supply} ranked={ranked} portfolio={portfolio} selected={selected} />
     </>

@@ -10,9 +10,11 @@ export function SavingsChart({ ranked, selectedId, onSelect }: { ranked: Candida
   const zeroPct = (maxNeg / span) * 100;
 
   return (
-    <section className="panel">
-      <div className="panel-title">Yearly savings by building</div>
-      <div className="panel-sub">Bars to the right save money. Bars to the left lose money. Modeled $ per year.</div>
+    <section className="card">
+      <div className="card-head">
+        <div className="card-title">Yearly savings</div>
+        <span className="fineprint inline">Right = saves money · Left = loses money</span>
+      </div>
       <div className="bars">
         {ranked.map((r) => {
           const v = r.individual.netAnnualSavings;
@@ -33,7 +35,8 @@ export function SavingsChart({ ranked, selectedId, onSelect }: { ranked: Candida
   );
 }
 
-const PALETTE = ['#0f766e', '#14b8a6', '#5eead4', '#2563eb', '#60a5fa', '#7c3aed', '#a78bfa', '#94a3b8'];
+/** Lenovo-inspired allocation palette: red, black, greys. */
+const PALETTE = ['#E2231A', '#1a1a1a', '#f08a84', '#6b6b6b', '#a8160f', '#b5b5b5', '#3a3a3a', '#d9d9d9'];
 
 /** Greedy shared-supply allocation: the view that can all happen at once. */
 export function PortfolioPanel({ portfolio: p, ranked }: { portfolio: Portfolio; ranked: CandidateResult[] }) {
@@ -41,84 +44,89 @@ export function PortfolioPanel({ portfolio: p, ranked }: { portfolio: Portfolio;
   const allocated = p.allocations.filter((x) => x.allocatedMwh > 0);
   const total = p.supplyMwh || 1;
   const usedPct = (p.totalAllocatedMwh / total) * 100;
+  const eligible = p.allocations.filter((x) => byId.get(x.customerId)?.status !== 'Not viable');
 
   return (
-    <section className="panel">
-      <div className="panel-title">Where the heat goes</div>
-      <div className="panel-sub">One bar represents all the usable heat in a year. Colored parts go to buildings. The striped part goes unused.</div>
+    <>
+      <section className="card">
+        <div className="share-top">
+          <div>
+            <span className="kpi-label">Heat put to use</span>
+            <strong className="kpi-num">
+              {fmtNum(usedPct)}
+              <small>%</small>
+            </strong>
+            <span className="kpi-sub">
+              {fmtNum(p.totalAllocatedMwh)} of {fmtNum(p.supplyMwh)} MWh a year · ≈ {fmtNum(p.totalAllocatedMwh / MWH_PER_HOME)} homes’ worth
+            </span>
+          </div>
+          <div className="share-money">
+            <div>
+              <span>Savings / yr</span>
+              <strong>{fmtMoney(p.totalNetAnnualSavings)}</strong>
+            </div>
+            <div>
+              <span>Setup cost</span>
+              <strong>{fmtMoney(p.totalCapex)}</strong>
+            </div>
+            <div>
+              <span>Payback</span>
+              <strong>{fmtPayback(p.portfolioPaybackYears)}</strong>
+            </div>
+          </div>
+        </div>
 
-      <div className="stack" aria-label="Share of usable heat given to each building">
-        {allocated.map((x, i) => (
-          <span
-            key={x.customerId}
-            style={{ width: `${(x.allocatedMwh / total) * 100}%`, background: PALETTE[i % PALETTE.length] }}
-            title={`${byId.get(x.customerId)?.customer.name}: ${fmtNum(x.allocatedMwh)} MWh`}
-          />
-        ))}
-        <span className="unused" style={{ width: `${(p.remainingUnusedMwh / total) * 100}%` }} title="Unused heat" />
-      </div>
-      <div className="stack-caption">
-        <span>{fmtNum(usedPct)}% used</span>
-        <span>{fmtNum(100 - usedPct)}% unused</span>
-      </div>
+        <div className="stack" aria-label="Share of usable heat given to each building">
+          {allocated.map((x, i) => (
+            <span
+              key={x.customerId}
+              style={{ width: `${(x.allocatedMwh / total) * 100}%`, background: PALETTE[i % PALETTE.length] }}
+              title={`${byId.get(x.customerId)?.customer.name}: ${fmtNum(x.allocatedMwh)} MWh`}
+            />
+          ))}
+          <span className="unused" style={{ width: `${(p.remainingUnusedMwh / total) * 100}%` }} title="Unused heat" />
+        </div>
+        <div className="stack-legend">
+          {allocated.map((x, i) => (
+            <span key={x.customerId}>
+              <i style={{ background: PALETTE[i % PALETTE.length] }} />
+              {byId.get(x.customerId)?.customer.name}
+            </span>
+          ))}
+          <span>
+            <i className="unused-swatch" />
+            Unused
+          </span>
+        </div>
+      </section>
 
-      <div className="mini-cards">
-        <div>
-          <span>Usable heat per year</span>
-          <strong>{fmtNum(p.supplyMwh)} MWh</strong>
-        </div>
-        <div>
-          <span>Given to buildings</span>
-          <strong>{fmtNum(p.totalAllocatedMwh)} MWh</strong>
-          <em>~{fmtNum(p.totalAllocatedMwh / MWH_PER_HOME)} homes’ worth</em>
-        </div>
-        <div>
-          <span>Left over</span>
-          <strong>{fmtNum(p.remainingUnusedMwh)} MWh</strong>
-        </div>
-        <div>
-          <span>Buildings still wanting heat</span>
-          <strong className={p.totalUnmetDemandMwh > 0 ? 'warn' : ''}>{fmtNum(p.totalUnmetDemandMwh)} MWh short</strong>
-        </div>
-        <div>
-          <span>Total savings per year</span>
-          <strong>{fmtMoney(p.totalNetAnnualSavings)}</strong>
-        </div>
-        <div>
-          <span>Total setup cost · pays back in</span>
-          <strong>
-            {fmtMoney(p.totalCapex)} · {fmtPayback(p.portfolioPaybackYears)}
-          </strong>
-        </div>
-      </div>
-
-      <table className="alloc-table">
-        <thead>
-          <tr>
-            <th>Order</th>
-            <th>Building</th>
-            <th className="r">Heat given</th>
-            <th className="r">Still needs</th>
-          </tr>
-        </thead>
-        <tbody>
-          {p.allocations
-            .filter((x) => byId.get(x.customerId)?.status !== 'Not viable')
-            .map((x, i) => {
+      <section className="card">
+        <div className="card-title">Who gets heat</div>
+        <table className="alloc-table">
+          <thead>
+            <tr>
+              <th>Building</th>
+              <th className="r">Gets</th>
+              <th className="r">Still needs</th>
+            </tr>
+          </thead>
+          <tbody>
+            {eligible.map((x) => {
               const idx = allocated.findIndex((y) => y.customerId === x.customerId);
               return (
                 <tr key={x.customerId}>
                   <td>
-                    <i className="swatch" style={{ background: idx >= 0 ? PALETTE[idx % PALETTE.length] : 'var(--line)' }} /> {i + 1}
+                    <i className="swatch" style={{ background: idx >= 0 ? PALETTE[idx % PALETTE.length] : 'var(--line)' }} />
+                    {byId.get(x.customerId)?.customer.name}
                   </td>
-                  <td>{byId.get(x.customerId)?.customer.name}</td>
                   <td className="r">{x.allocatedMwh > 0 ? `${fmtNum(x.allocatedMwh)} MWh` : 'None left'}</td>
-                  <td className={`r ${x.unmetDemandMwh > 0 ? 'warn' : ''}`}>{x.unmetDemandMwh > 0 ? `${fmtNum(x.unmetDemandMwh)} MWh` : 'Fully covered'}</td>
+                  <td className={`r ${x.unmetDemandMwh > 0 ? 'warn' : 'muted'}`}>{x.unmetDemandMwh > 0 ? `${fmtNum(x.unmetDemandMwh)} MWh` : '—'}</td>
                 </tr>
               );
             })}
-        </tbody>
-      </table>
-    </section>
+          </tbody>
+        </table>
+      </section>
+    </>
   );
 }

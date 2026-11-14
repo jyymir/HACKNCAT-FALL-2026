@@ -3,7 +3,7 @@ import type { Assumptions, Portfolio, SupplySummary } from '../engine/types';
 import { SCENARIOS } from '../data/demoCustomers';
 import { GROUPS, type FieldDef } from '../data/fields';
 import { MWH_PER_HOME, fmtNum } from '../format';
-import { Info, NextStep, PageIntro } from '../components/ui';
+import { Info, NextStep, PageHeader } from '../components/ui';
 import { WhatIfBox } from '../components/AiPanels';
 
 const round = (v: number) => Math.round(v * 1e6) / 1e6;
@@ -26,19 +26,9 @@ function Field({ def, value, onChange }: { def: FieldDef; value: number; onChang
   return (
     <div className="field">
       <div className="field-head">
-        <label htmlFor={`f-${def.key}`}>{def.label}</label>
-        <Info>{def.help}</Info>
-      </div>
-      <div className="field-row">
-        <input
-          type="range"
-          aria-label={def.label}
-          min={def.min}
-          max={def.max}
-          step={def.step}
-          value={Math.min(def.max, Math.max(def.min, shown))}
-          onChange={(e) => onChange(round(Number(e.target.value) / scale))}
-        />
+        <label htmlFor={`f-${def.key}`}>
+          {def.label} <Info>{def.help}</Info>
+        </label>
         <div className={`num ${valid(text) ? '' : 'invalid'}`}>
           <input
             id={`f-${def.key}`}
@@ -58,9 +48,18 @@ function Field({ def, value, onChange }: { def: FieldDef; value: number; onChang
           <span className="unit">{def.unit}</span>
         </div>
       </div>
+      <input
+        type="range"
+        aria-label={def.label}
+        min={def.min}
+        max={def.max}
+        step={def.step}
+        value={Math.min(def.max, Math.max(def.min, shown))}
+        onChange={(e) => onChange(round(Number(e.target.value) / scale))}
+      />
       {!valid(text) && (
         <div className="field-error">
-          Please enter a number from {def.min} to {def.max}.
+          Enter {def.min}–{def.max}
         </div>
       )}
     </div>
@@ -69,54 +68,46 @@ function Field({ def, value, onChange }: { def: FieldDef; value: number; onChang
 
 function HeatFlow({ a, supply, portfolio }: { a: Assumptions; supply: SupplySummary; portfolio: Portfolio }) {
   const captured = a.itLoadMw * a.heatCaptureFraction;
-  const deliveredMw = supply.recoverableHeatMw * (1 - a.distributionLossFraction);
-  const steps = [
-    { label: 'Servers use', value: `${fmtNum(a.itLoadMw, 1)} MW`, sub: 'electricity → heat' },
-    { label: 'Heat captured', value: `${fmtNum(captured, 1)} MW`, sub: `${fmtNum(a.heatCaptureFraction * 100)}% caught in water` },
-    { label: 'After heat exchanger', value: `${fmtNum(supply.recoverableHeatMw, 2)} MW`, sub: 'usable heat' },
-    { label: 'Reaches buildings', value: `${fmtNum(deliveredMw, 2)} MW`, sub: `after ${fmtNum(a.distributionLossFraction * 100)}% pipe losses` },
-  ];
+  const reaches = supply.recoverableHeatMw * (1 - a.distributionLossFraction);
   const max = a.itLoadMw || 1;
+  const steps = [
+    { label: 'Servers use', mw: a.itLoadMw },
+    { label: 'Heat captured', mw: captured },
+    { label: 'Usable heat', mw: supply.recoverableHeatMw },
+    { label: 'Reaches buildings', mw: reaches },
+  ];
   return (
-    <aside className="panel flow-panel">
-      <div className="panel-title">What this data center produces</div>
-      <div className="panel-sub">Updates instantly as you change the settings.</div>
+    <div className="card">
+      <div className="card-title">Heat flow</div>
       <div className="flow">
-        {steps.map((s, i) => {
-          const mw = [a.itLoadMw, captured, supply.recoverableHeatMw, deliveredMw][i];
-          return (
-            <div key={s.label} className="flow-step">
-              <div className="flow-top">
-                <span>{s.label}</span>
-                <strong>{s.value}</strong>
-              </div>
-              <div className="flow-bar">
-                <span style={{ width: `${(mw / max) * 100}%` }} />
-              </div>
-              <div className="flow-sub">{s.sub}</div>
+        {steps.map((s, i) => (
+          <div key={s.label} className="flow-step">
+            <div className="flow-top">
+              <span>{s.label}</span>
+              <strong>{fmtNum(s.mw, i === 0 ? 1 : 2)} MW</strong>
             </div>
-          );
-        })}
+            <div className={`flow-bar ${i >= 2 ? 'cool' : ''}`}>
+              <span style={{ width: `${(s.mw / max) * 100}%` }} />
+            </div>
+          </div>
+        ))}
       </div>
       <div className="flow-total">
         <div>
-          <span>Usable heat per year</span>
+          <span>Usable per year</span>
           <strong>{fmtNum(supply.networkAvailableHeatMwh)} MWh</strong>
         </div>
         <div>
-          <span>Actually used by matched buildings</span>
+          <span>Actually used</span>
           <strong>{fmtNum(portfolio.totalAllocatedMwh)} MWh</strong>
         </div>
         <div>
-          <span>Roughly enough heat for</span>
-          <strong>~{fmtNum(supply.networkAvailableHeatMwh / MWH_PER_HOME)} homes</strong>
+          <span>About the same as</span>
+          <strong>~{fmtNum(supply.networkAvailableHeatMwh / MWH_PER_HOME)} homes*</strong>
         </div>
       </div>
-      <p className="note">
-        Simplified model. Not all of this heat can be sold. Only heat a building actually uses counts toward savings. The homes figure is a rough illustration
-        (~{MWH_PER_HOME} MWh/home/yr).
-      </p>
-    </aside>
+      <p className="fineprint">* Rough illustration (~{MWH_PER_HOME} MWh/home/yr). Only heat a building actually uses counts toward savings.</p>
+    </div>
   );
 }
 
@@ -131,64 +122,49 @@ export function SetupPage({
   assumptions: Assumptions;
   onChange: (a: Assumptions) => void;
   onScenario: (id: string) => void;
-  activeScenario: string | null;
+  activeScenario: string;
   supply: SupplySummary;
   portfolio: Portfolio;
 }) {
+  const main = GROUPS.filter((g) => !g.expert);
+  const expert = GROUPS.filter((g) => g.expert);
+  const field = (f: FieldDef) => <Field key={f.key} def={f} value={assumptions[f.key]} onChange={(v) => onChange({ ...assumptions, [f.key]: v })} />;
+
   return (
     <div className="page">
-      <PageIntro step="Step 1 of 5" title="Describe the data center">
-        Pick a ready-made scenario or adjust the numbers yourself. Hover the <span className="info inline">?</span> icons for plain explanations. Every other page
-        updates automatically.
-      </PageIntro>
+      <PageHeader title="Set up" sub="Describe the data center. Every page updates as you go." />
 
-      <section className="panel">
-        <div className="panel-title">Try a what-if scenario</div>
-        <div className="scenario-cards">
-          {SCENARIOS.map((s) => (
-            <button key={s.id} className={`scenario ${activeScenario === s.id ? 'active' : ''}`} onClick={() => onScenario(s.id)}>
-              <strong>{s.label}</strong>
-              <span>{s.description}</span>
-            </button>
-          ))}
-        </div>
-        {activeScenario === null && <p className="note">You’re using custom settings. Pick a scenario above to reset.</p>}
-      </section>
-
-      <WhatIfBox assumptions={assumptions} onApply={onChange} />
-
-      <div className="setup-grid">
-        <div className="setup-fields">
-          {GROUPS.map((g) => {
-            const body = (
-              <div className="field-grid">
-                {g.fields.map((f) => (
-                  <Field key={f.key} def={f} value={assumptions[f.key]} onChange={(v) => onChange({ ...assumptions, [f.key]: v })} />
-                ))}
-              </div>
-            );
-            return g.expert ? (
-              <details key={g.title} className="panel">
-                <summary>
-                  <span className="panel-title">{g.title}</span>
-                  <span className="panel-sub"> {g.blurb}</span>
-                </summary>
-                {body}
-              </details>
-            ) : (
-              <section key={g.title} className="panel">
-                <div className="panel-title">{g.title}</div>
-                <div className="panel-sub">{g.blurb}</div>
-                {body}
-              </section>
-            );
-          })}
-          <p className="note">Default values are for demonstration only, not universal engineering values.</p>
-        </div>
-        <HeatFlow a={assumptions} supply={supply} portfolio={portfolio} />
+      <div className="seg-pills" role="group" aria-label="Scenarios">
+        {SCENARIOS.map((s) => (
+          <button key={s.id} className={activeScenario === s.id ? 'active' : ''} title={s.description} onClick={() => onScenario(s.id)}>
+            {s.label}
+          </button>
+        ))}
       </div>
 
-      <NextStep label="See which neighbors fit" href="#matches" back={{ label: 'Home', href: '#' }} />
+      <div className="setup-grid">
+        <div className="card">
+          {main.map((g) => (
+            <section key={g.title} className="field-group">
+              <div className="card-title">{g.title}</div>
+              <div className="field-grid">{g.fields.map(field)}</div>
+            </section>
+          ))}
+          {expert.map((g) => (
+            <details key={g.title} className="field-group expert">
+              <summary className="card-title">{g.title}</summary>
+              <div className="field-grid">{g.fields.map(field)}</div>
+            </details>
+          ))}
+        </div>
+
+        <div className="side-stack">
+          <HeatFlow a={assumptions} supply={supply} portfolio={portfolio} />
+          <WhatIfBox assumptions={assumptions} onApply={onChange} />
+        </div>
+      </div>
+
+      <NextStep label="See matches" href="#matches" back={{ label: 'Overview', href: '#' }} />
     </div>
   );
 }
