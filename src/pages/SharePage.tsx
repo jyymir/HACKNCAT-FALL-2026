@@ -1,6 +1,6 @@
 import type { CandidateResult, Portfolio } from '../engine/types';
 import { PortfolioPanel } from '../components/ResultsCharts';
-import { NextStep, PageIntro } from '../components/ui';
+import { Info, NextStep, PageHeader } from '../components/ui';
 import { fmtNum } from '../format';
 
 export function SharePage({ portfolio, ranked }: { portfolio: Portfolio; ranked: CandidateResult[] }) {
@@ -9,31 +9,25 @@ export function SharePage({ portfolio, ranked }: { portfolio: Portfolio; ranked:
 
   return (
     <div className="page">
-      <PageIntro step="Step 4 of 5" title="Share out the heat">
-        The data center only makes so much heat, so the same heat can’t go to two buildings. HeatMatch hands it out in rank order. The best match gets what it
-        needs first, then the next, until the heat runs out. Buildings that are “not a fit” are skipped.
-      </PageIntro>
-
-      <div className={`callout ${short ? 'warn' : 'ok'}`}>
-        {short ? (
+      <PageHeader
+        title="Share heat"
+        sub={
           <>
-            <strong>Not enough heat for everyone.</strong> Matched buildings want {fmtNum(portfolio.totalUnmetDemandMwh)} MWh more per year than is available. Try
-            a bigger data center or better heat capture on the Set-up page.
+            One supply, handed out best match first.{' '}
+            <Info>The same heat can’t go to two buildings. Matches get what they need in rank order until the heat runs out. “Not a fit” buildings are skipped.</Info>
           </>
-        ) : (
-          <>
-            <strong>Every matched building gets all the heat it needs</strong>, with {fmtNum(portfolio.remainingUnusedMwh)} MWh per year left over. That leftover
-            heat would still go to waste unless more customers are found.
-          </>
-        )}
-      </div>
+        }
+      >
+        <span className={`status-pill ${short ? 'warn' : 'ok'}`}>
+          {short ? `${fmtNum(portfolio.totalUnmetDemandMwh)} MWh short` : `${fmtNum(portfolio.remainingUnusedMwh)} MWh spare`}
+        </span>
+      </PageHeader>
 
       <PortfolioPanel portfolio={portfolio} ranked={ranked} />
 
       {excluded.length > 0 && (
-        <section className="panel">
-          <div className="panel-title">Skipped (not a fit)</div>
-          <div className="panel-sub">These get no heat because connecting them wouldn’t pay off under the current settings.</div>
+        <details className="card fold-card">
+          <summary className="card-title">Skipped buildings ({excluded.length})</summary>
           <ul className="plain-list">
             {excluded.map((r) => (
               <li key={r.customer.id}>
@@ -41,10 +35,10 @@ export function SharePage({ portfolio, ranked }: { portfolio: Portfolio; ranked:
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       )}
 
-      <NextStep label="Get the report" href="#report" back={{ label: 'Compare', href: '#compare' }} />
+      <NextStep label="Get report" href="#report" back={{ label: 'Compare', href: '#compare' }} />
     </div>
   );
 }

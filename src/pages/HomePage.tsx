@@ -1,109 +1,123 @@
+import { ArrowRight, Sparkles } from 'lucide-react';
 import type { CandidateResult, Portfolio, SupplySummary } from '../engine/types';
-import { DISCLAIMER, MWH_PER_HOME, fmtNum } from '../format';
+import { MWH_PER_HOME, STATUS_CLASS, fmtMoney, fmtNum, fmtPayback } from '../format';
+import { CategoryTile, StatusBadge } from '../components/ui';
 
-export function HomePage({ supply, ranked, portfolio }: { supply: SupplySummary; ranked: CandidateResult[]; portfolio: Portfolio }) {
-  const good = ranked.filter((r) => r.status === 'Promising');
-  const homes = portfolio.totalAllocatedMwh / MWH_PER_HOME;
+export function HomePage({
+  supply,
+  ranked,
+  portfolio,
+  onOpen,
+}: {
+  supply: SupplySummary;
+  ranked: CandidateResult[];
+  portfolio: Portfolio;
+  onOpen: (id: string) => void;
+}) {
+  const good = ranked.filter((r) => r.status === 'Promising').length;
+  const usedPct = supply.networkAvailableHeatMwh > 0 ? (portfolio.totalAllocatedMwh / supply.networkAvailableHeatMwh) * 100 : 0;
+  const top = ranked.slice(0, 3);
 
   return (
-    <div className="page home">
+    <div className="page">
       <section className="hero">
-        <div className="eyebrow">Prototype · Illustrative scenario</div>
-        <h2>Turn data-center heat into warmth for the neighbors.</h2>
-        <p className="lead">
-          Computers in an AI data center get hot, and that heat usually goes to waste. Hospitals, pools, greenhouses, and apartment buildings nearby pay to heat
-          water and rooms. <strong>HeatMatch</strong> checks which of those neighbors could actually use the data center’s heat, and whether it’s worth the cost.
-        </p>
+        <div className="hero-chips">
+          <span className="glass-chip">{fmtNum(supply.recoverableHeatMw, 1)} MW usable heat</span>
+          <span className="glass-chip">
+            {good} of {ranked.length} good matches
+          </span>
+        </div>
+        <h1>
+          Turn data-center heat
+          <br />
+          <em>into local warmth.</em>
+        </h1>
+        <p>Find which nearby buildings could use waste heat from an AI data center, and whether it pays off.</p>
         <div className="hero-actions">
-          <a className="btn primary lg" href="#setup">
-            Start: describe the data center →
+          <a className="pill light" href="#setup">
+            Start setup <ArrowRight size={16} />
           </a>
-          <a className="btn lg" href="#matches">
-            Jump to the matches
+          <a className="pill glass" href="#matches">
+            See matches
           </a>
         </div>
       </section>
 
-      <section className="snapshot" aria-label="Current scenario at a glance">
-        <div className="snap">
-          <span className="snap-num">{fmtNum(supply.recoverableHeatMw, 1)} MW</span>
-          <span className="snap-label">of usable heat right now</span>
+      <section className="kpis">
+        <div className="card kpi">
+          <span className="kpi-label">Usable heat</span>
+          <strong className="kpi-num">
+            {fmtNum(supply.recoverableHeatMw, 1)}
+            <small> MW</small>
+          </strong>
+          <span className="kpi-sub">{fmtNum(supply.networkAvailableHeatMwh)} MWh a year after pipe losses</span>
         </div>
-        <div className="snap">
-          <span className="snap-num">~{fmtNum(homes)}</span>
-          <span className="snap-label">
-            homes’ worth of heat a year actually put to use<sup>*</sup>
-          </span>
+        <div className="card kpi">
+          <span className="kpi-label">Heat put to use</span>
+          <strong className="kpi-num">
+            {fmtNum(usedPct)}
+            <small>%</small>
+          </strong>
+          <div className="meter">
+            <span style={{ width: `${Math.min(100, usedPct)}%` }} />
+          </div>
+          <span className="kpi-sub">≈ {fmtNum(portfolio.totalAllocatedMwh / MWH_PER_HOME)} homes’ worth of heat*</span>
         </div>
-        <div className="snap">
-          <span className="snap-num">
-            {good.length} of {ranked.length}
-          </span>
-          <span className="snap-label">nearby buildings are a good match</span>
+        <div className="card kpi">
+          <span className="kpi-label">Yearly savings, all matches</span>
+          <strong className="kpi-num">{fmtMoney(portfolio.totalNetAnnualSavings)}</strong>
+          <span className="kpi-sub">Pays back in {fmtPayback(portfolio.portfolioPaybackYears).toLowerCase()}</span>
         </div>
       </section>
-      <p className="note center">
-        * Rough illustrative comparison assuming ~{MWH_PER_HOME} MWh of heat per home per year. Based on the current settings and fictional demo buildings.
+
+      <section>
+        <div className="section-head">
+          <h2>Top matches</h2>
+          <a href="#compare" className="link">
+            Compare all <ArrowRight size={14} />
+          </a>
+        </div>
+        <div className="match-cards">
+          {top.map((r) => (
+            <button key={r.customer.id} className={`match-card ${STATUS_CLASS[r.status]}`} onClick={() => onOpen(r.customer.id)}>
+              <div className="match-card-top">
+                <CategoryTile category={r.customer.category} />
+                <StatusBadge status={r.status} />
+              </div>
+              <strong className="match-name">{r.customer.name}</strong>
+              <span className="match-num">{fmtMoney(r.individual.netAnnualSavings)}</span>
+              <span className="match-sub">saved per year · pays back in {fmtPayback(r.individual.simplePaybackYears).toLowerCase()}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="split">
+        <div className="card idea">
+          <h2>Close by isn’t enough</h2>
+          <p>A good match needs the right temperature, enough heat demand, a short pipe, and electricity that costs less than the heating it replaces.</p>
+          <div className="factors">
+            <span>🌡️ Temperature</span>
+            <span>🔥 Demand</span>
+            <span>📏 Distance</span>
+            <span>⚡ Power cost</span>
+          </div>
+        </div>
+        <div className="card promo">
+          <Sparkles size={22} />
+          <h2>
+            Ask a <span className="outline-word">what-if</span>
+          </h2>
+          <p>“What if electricity got 50% more expensive?” Type it in plain English and watch every result update.</p>
+          <a className="pill red" href="#setup">
+            Try it
+          </a>
+        </div>
+      </section>
+
+      <p className="fineprint">
+        * Rough illustration at ~{MWH_PER_HOME} MWh per home per year. All buildings are fictional demo data, not real customers.
       </p>
-
-      <section className="how">
-        <h3>How it works</h3>
-        <ol className="steps">
-          <li>
-            <a href="#setup">
-              <span className="step-n">1</span>
-              <strong>Describe the data center</strong>
-              <span>How big it is, how warm its cooling water gets, and what energy costs.</span>
-            </a>
-          </li>
-          <li>
-            <a href="#matches">
-              <span className="step-n">2</span>
-              <strong>See which neighbors fit</strong>
-              <span>A map of nearby buildings, each with a plain verdict and the reasons behind it.</span>
-            </a>
-          </li>
-          <li>
-            <a href="#compare">
-              <span className="step-n">3</span>
-              <strong>Compare them side by side</strong>
-              <span>Who saves the most money, and who pays back fastest.</span>
-            </a>
-          </li>
-          <li>
-            <a href="#share">
-              <span className="step-n">4</span>
-              <strong>Share out the heat</strong>
-              <span>There’s only so much heat. See who gets it, and what’s left over.</span>
-            </a>
-          </li>
-          <li>
-            <a href="#report">
-              <span className="step-n">5</span>
-              <strong>Get a report</strong>
-              <span>Print, save as PDF, or download a spreadsheet.</span>
-            </a>
-          </li>
-        </ol>
-      </section>
-
-      <section className="big-idea">
-        <h3>The big idea</h3>
-        <p>
-          <strong>Being nearby isn’t enough.</strong> A building is only a good match if it needs heat at a temperature the data center can reach, uses enough of
-          it, and is close enough that the pipe doesn’t cost a fortune. It also matters whether the electricity for boosting the heat costs less than the heating
-          bill it replaces.
-        </p>
-        <div className="factors">
-          <span>🌡️ Temperature</span>
-          <span>🔥 How much heat they use</span>
-          <span>📏 Distance</span>
-          <span>⚡ Electricity cost</span>
-          <span>🏗️ Setup cost</span>
-        </div>
-      </section>
-
-      <p className="note center">{DISCLAIMER} HeatMatch is a concept prototype, not an existing Lenovo product.</p>
     </div>
   );
 }

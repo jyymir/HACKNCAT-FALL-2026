@@ -1,6 +1,7 @@
 import type { Assumptions, CandidateResult, Portfolio, SupplySummary } from '../engine/types';
 import { LIMITATIONS, Report, downloadCsv } from '../components/Report';
-import { NextStep, PageIntro } from '../components/ui';
+import { Download, Printer } from 'lucide-react';
+import { NextStep, PageHeader } from '../components/ui';
 
 const GLOSSARY: [string, string][] = [
   ['MW (megawatt)', 'A rate of power, i.e. how much energy is used or produced at any moment.'],
@@ -30,73 +31,76 @@ export function ReportPage(props: {
 }) {
   return (
     <div className="page">
-      <PageIntro step="Step 5 of 5" title="Get a report">
-        Save or share the results. The report covers your current settings and the building selected on the Matches page ({props.selected.customer.name}).
-      </PageIntro>
+      <PageHeader title="Report" sub="Save or share the current results." />
 
-      <section className="panel actions-panel">
-        <button className="btn primary lg" onClick={() => window.print()}>
-          🖨️ Print or save as PDF
-        </button>
-        <button className="btn lg" onClick={() => downloadCsv(props.ranked)}>
-          ⬇️ Download spreadsheet (CSV)
-        </button>
-        <span className="note">In the print window, choose “Save as PDF” to get a file.</span>
-      </section>
+      <div className="split">
+        <div className="card promo">
+          <Printer size={22} />
+          <h2>Print or save as PDF</h2>
+          <p>Settings, rankings, the selected building ({props.selected.customer.name}) and limitations, on a clean page.</p>
+          <button className="pill red" onClick={() => window.print()}>
+            Print report
+          </button>
+        </div>
+        <div className="card action-card">
+          <Download size={22} />
+          <h2>Download spreadsheet</h2>
+          <p>Every building’s results as a CSV file for Excel or Google Sheets.</p>
+          <button className="pill dark" onClick={() => downloadCsv(props.ranked)}>
+            Download CSV
+          </button>
+        </div>
+      </div>
 
-      <details className="panel">
-        <summary className="panel-title">Preview the report</summary>
+      <details className="card fold-card">
+        <summary className="card-title">Preview report</summary>
         <Report {...props} preview />
       </details>
 
-      <div className="two-col">
-        <section className="panel">
-          <div className="panel-title">Words used in this tool</div>
-          <dl className="glossary">
-            {GLOSSARY.map(([t, d]) => (
-              <div key={t}>
-                <dt>{t}</dt>
-                <dd>{d}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-        <section className="panel">
-          <div className="panel-title">How the math works</div>
-          <ol className="plain-list">
-            <li>Usable heat = server power × share captured × heat-exchanger efficiency × hours per year, minus pipe losses.</li>
-            <li>Each building gets no more heat than it uses, and no more than is available.</li>
-            <li>Heat-pump electricity = heat supplied ÷ efficiency (COP). The bigger the temperature boost, the lower the COP.</li>
-            <li>Savings = heating bill avoided − electricity − upkeep. Payback = setup cost ÷ yearly savings.</li>
-            <li>The verdict follows simple, visible rules (payback targets on the Set-up page). It is a screening aid, not an AI score.</li>
-          </ol>
-          <div className="panel-title spaced">What this tool doesn’t do</div>
-          <ul className="plain-list">
-            {LIMITATIONS.map((l) => (
-              <li key={l}>{l}</li>
-            ))}
-          </ul>
-        </section>
-      </div>
+      <details className="card fold-card">
+        <summary className="card-title">Glossary</summary>
+        <dl className="glossary">
+          {GLOSSARY.map(([t, d]) => (
+            <div key={t}>
+              <dt>{t}</dt>
+              <dd>{d}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
 
-      <section className="panel">
-        <div className="panel-title">Public references for context</div>
+      <details className="card fold-card">
+        <summary className="card-title">How the math works &amp; limitations</summary>
+        <ol className="plain-list">
+          <li>Usable heat = server power × share captured × heat-exchanger efficiency × hours, minus pipe losses.</li>
+          <li>Each building gets no more heat than it uses or than is available.</li>
+          <li>Heat-pump electricity = heat supplied ÷ COP. COP drops as the temperature boost grows.</li>
+          <li>Savings = heating bill avoided − electricity − upkeep. Payback = setup cost ÷ yearly savings.</li>
+          <li>Verdicts follow simple visible rules (payback targets in Set up), not an AI score.</li>
+        </ol>
+        <ul className="plain-list muted">
+          {LIMITATIONS.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+      </details>
+
+      <details className="card fold-card">
+        <summary className="card-title">References</summary>
         <ul className="plain-list">
           {REFERENCES.map((r) => (
             <li key={r.url}>
               <a href={r.url} target="_blank" rel="noreferrer">
                 {r.label}
               </a>{' '}
-              ({r.why})
+              <span className="muted">({r.why})</span>
             </li>
           ))}
         </ul>
-        <p className="note">
-          These sources were <strong>not</strong> used to create the demo data. They are possible sources of verified data in the future.
-        </p>
-      </section>
+        <p className="fineprint">Not used to create the demo data; listed as possible future sources of verified data.</p>
+      </details>
 
-      <NextStep label="Back to start" href="#" back={{ label: 'Share heat', href: '#share' }} />
+      <NextStep label="Back to overview" href="#" back={{ label: 'Share heat', href: '#share' }} />
     </div>
   );
 }

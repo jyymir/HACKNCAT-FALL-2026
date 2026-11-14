@@ -14,7 +14,7 @@ function useAiStatus(): AiStatus | null {
 function AiOff() {
   return (
     <div className="ai-off">
-      ✨ The AI assistant is turned off. Everything else works normally. <span className="muted">(To enable it, add GEMINI_API_KEY to .env.local and restart.)</span>
+      ✨ AI assistant is off. <span className="muted">Add GEMINI_API_KEY to .env.local to enable.</span>
     </div>
   );
 }
@@ -42,10 +42,9 @@ function AnswerText({ text }: { text: string }) {
 }
 
 const WHATIF_EXAMPLES = [
-  'What if electricity got 50% more expensive?',
-  'What if pipes cost twice as much?',
-  'What if the data center were only 4 MW?',
-  'What if the cooling water came out at 55 °C?',
+  { label: 'Electricity 50% pricier', q: 'What if electricity got 50% more expensive?' },
+  { label: 'Pipes cost double', q: 'What if pipes cost twice as much?' },
+  { label: 'Only a 4 MW data center', q: 'What if the data center were only 4 MW?' },
 ];
 
 /** Natural-language what-if → validated setting changes → user confirms → engine recalculates. */
@@ -79,19 +78,19 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
   };
 
   return (
-    <section className="panel ai-panel">
-      <div className="panel-title">✨ Ask a what-if in your own words</div>
-      <div className="panel-sub">The AI turns your question into setting changes. You review them first, then the model recalculates every result.</div>
+    <section className="card ai-card">
+      <div className="card-title">✨ Ask a what-if</div>
+      <div className="card-sub">AI suggests setting changes. You approve them.</div>
       <form className="ai-form" onSubmit={(e) => submit(text, e)}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. What if electricity got 50% more expensive?" maxLength={300} aria-label="What-if question" />
-        <button className="btn primary" disabled={busy || !text.trim()}>
+        <button className="pill dark" disabled={busy || !text.trim()}>
           {busy ? 'Thinking…' : 'Try it'}
         </button>
       </form>
       <div className="ai-examples">
-        {WHATIF_EXAMPLES.map((q) => (
-          <button key={q} className="chip" onClick={() => submit(q)} disabled={busy}>
-            {q}
+        {WHATIF_EXAMPLES.map((x) => (
+          <button key={x.label} className="chip" onClick={() => submit(x.q)} disabled={busy}>
+            {x.label}
           </button>
         ))}
       </div>
@@ -114,7 +113,7 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
               </ul>
               <div className="ai-actions">
                 <button
-                  className="btn primary"
+                  className="pill dark"
                   onClick={() => {
                     setUndo(assumptions);
                     onApply(proposal.next);
@@ -123,7 +122,7 @@ export function WhatIfBox({ assumptions, onApply }: { assumptions: Assumptions; 
                 >
                   Apply these changes
                 </button>
-                <button className="btn" onClick={() => setProposal(null)}>
+                <button className="pill ghost" onClick={() => setProposal(null)}>
                   Discard
                 </button>
               </div>
@@ -192,9 +191,9 @@ export function AskBox({ selected, ranked, buildContext }: { selected: Candidate
   };
 
   return (
-    <section className="panel ai-panel">
-      <div className="panel-title">✨ Ask about {selected.customer.name}</div>
-      <div className="panel-sub">Answers use only this tool’s own results. The AI doesn’t change any numbers.</div>
+    <section className="card ai-card">
+      <div className="card-title">✨ Ask about {selected.customer.name}</div>
+      <div className="card-sub">Answers use only this tool’s own numbers.</div>
       <div className="ai-examples">
         {suggestions(selected, ranked[0]).map((s) => (
           <button key={s} className="chip" onClick={() => ask(s)} disabled={busy}>
@@ -204,7 +203,7 @@ export function AskBox({ selected, ranked, buildContext }: { selected: Candidate
       </div>
       <form className="ai-form" onSubmit={(e) => ask(q, e)}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ask anything about this building…" maxLength={300} aria-label="Question" />
-        <button className="btn primary" disabled={busy || !q.trim()}>
+        <button className="pill dark" disabled={busy || !q.trim()}>
           {busy ? 'Thinking…' : 'Ask'}
         </button>
       </form>
@@ -214,7 +213,7 @@ export function AskBox({ selected, ranked, buildContext }: { selected: Candidate
           <AiTag model={answer.model ?? status.model} />
           <div className="ai-q">“{answer.q}”</div>
           <AnswerText text={answer.text} />
-          <p className="note">AI explanations can be wrong. The numbers above come from the model and are the source of truth.</p>
+          <p className="fineprint">AI can be wrong. The numbers above are the source of truth.</p>
         </div>
       )}
     </section>

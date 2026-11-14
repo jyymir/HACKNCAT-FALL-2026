@@ -36,9 +36,9 @@ export const STATUS_BLURB: Record<Status, string> = {
 
 /** Must match the --promising / --marginal / --notviable tokens in app.css (Leaflet needs literal colors). */
 export const STATUS_COLOR: Record<Status, string> = {
-  Promising: '#1f8a5b',
-  Marginal: '#c27c0e',
-  'Not viable': '#c2410c',
+  Promising: '#1f7a45',
+  Marginal: '#c98a00',
+  'Not viable': '#7a8290',
 };
 
 /**

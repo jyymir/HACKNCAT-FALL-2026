@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { CandidateResult, DataCenter } from '../engine/types';
-import { DISCLAIMER, STATUS_COLOR, STATUS_LABEL, fmtDistance } from '../format';
+import { STATUS_COLOR, STATUS_LABEL, fmtDistance } from '../format';
 
 interface Props {
   dc: DataCenter;
@@ -33,7 +33,7 @@ function LeafletView({ dc, ranked, selectedId, onSelect }: Props) {
           }}
         />
       ))}
-      <CircleMarker center={[dc.lat, dc.lon]} radius={11} pathOptions={{ color: '#fff', weight: 2, fillColor: '#14213d', fillOpacity: 1 }}>
+      <CircleMarker center={[dc.lat, dc.lon]} radius={11} pathOptions={{ color: '#fff', weight: 2, fillColor: '#E2231A', fillOpacity: 1 }}>
         <Tooltip direction="top" offset={[0, -8]}>
           {dc.name}
         </Tooltip>
@@ -45,7 +45,7 @@ function LeafletView({ dc, ranked, selectedId, onSelect }: Props) {
             key={`${r.customer.id}-${r.status}-${sel}`}
             center={[r.customer.lat, r.customer.lon]}
             radius={sel ? 11 : 8}
-            pathOptions={{ color: sel ? '#14213d' : '#fff', weight: sel ? 3 : 2, fillColor: STATUS_COLOR[r.status], fillOpacity: 0.95 }}
+            pathOptions={{ color: sel ? '#111111' : '#fff', weight: sel ? 3 : 2, fillColor: STATUS_COLOR[r.status], fillOpacity: 0.95 }}
             eventHandlers={{ click: () => onSelect(r.customer.id) }}
           >
             <Tooltip direction="top" offset={[0, -8]}>
@@ -87,7 +87,7 @@ function SchematicView({ dc, ranked, selectedId, onSelect }: Props) {
         const [x, y] = project(r.customer.lat, r.customer.lon);
         return <line key={`l-${r.customer.id}`} x1={half} y1={half} x2={x} y2={y} stroke={STATUS_COLOR[r.status]} strokeDasharray="4 5" strokeWidth={r.customer.id === selectedId ? 2.5 : 1.2} opacity={0.7} />;
       })}
-      <rect x={half - 9} y={half - 9} width={18} height={18} rx={3} fill="var(--navy)" />
+      <rect x={half - 9} y={half - 9} width={18} height={18} rx={3} fill="var(--red)" />
       <text x={half} y={half + 24} textAnchor="middle" className="pt-label strong">
         Data center
       </text>
@@ -96,7 +96,7 @@ function SchematicView({ dc, ranked, selectedId, onSelect }: Props) {
         const sel = r.customer.id === selectedId;
         return (
           <g key={r.customer.id} className="pt" onClick={() => onSelect(r.customer.id)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onSelect(r.customer.id)}>
-            <circle cx={x} cy={y} r={sel ? 10 : 7} fill={STATUS_COLOR[r.status]} stroke={sel ? 'var(--navy)' : '#fff'} strokeWidth={sel ? 3 : 2} />
+            <circle cx={x} cy={y} r={sel ? 10 : 7} fill={STATUS_COLOR[r.status]} stroke={sel ? 'var(--ink)' : '#fff'} strokeWidth={sel ? 3 : 2} />
             <text x={x} y={y - 13} textAnchor="middle" className={`pt-label ${sel ? 'strong' : ''}`}>
               {r.customer.name}
             </text>
@@ -110,18 +110,15 @@ function SchematicView({ dc, ranked, selectedId, onSelect }: Props) {
 export function CustomerMap(props: Props) {
   const [mode, setMode] = useState<'map' | 'schematic'>('map');
   return (
-    <section className="panel map-panel">
-      <div className="panel-head">
-        <div>
-          <div className="panel-title">Nearby buildings</div>
-          <div className="panel-sub">Fictional demo locations · dashed lines show straight-line distance, not real pipe routes</div>
-        </div>
-        <div className="seg" role="tablist">
+    <section className="card map-card">
+      <div className="card-head">
+        <div className="card-title">Nearby buildings</div>
+        <div className="seg-pills small" role="group" aria-label="Map style">
           <button className={mode === 'map' ? 'active' : ''} onClick={() => setMode('map')}>
             Map
           </button>
           <button className={mode === 'schematic' ? 'active' : ''} onClick={() => setMode('schematic')}>
-            Simple view
+            Offline view
           </button>
         </div>
       </div>
@@ -136,7 +133,7 @@ export function CustomerMap(props: Props) {
           <i className="dc" /> Data center
         </span>
       </div>
-      <p className="note">{DISCLAIMER} “Simple view” works without internet.</p>
+      <p className="fineprint">Fictional demo locations. Dashed lines are straight-line distance, not pipe routes.</p>
     </section>
   );
 }
